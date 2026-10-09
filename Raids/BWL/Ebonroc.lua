@@ -21,8 +21,8 @@ L:RegisterTranslations("enUS", function() return {
 	curse_desc = "Warn for Shadow of Ebonroc",
 
 	sparks_cmd = "sparks",
-	sparks_name = "Shadowflame Spark Reminder",
-	sparks_desc = "Reminds about the mechanic at the start of the fight",
+	sparks_name = "Shadowflame Sparks Alert",
+	sparks_desc = "Warn for recurring Shadowflame Spark waves (every 8s), timers, and personal aggro alerts",
 	
 	
 	trigger_wingBuffet = "Ebonroc begins to cast Wing Buffet.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
@@ -44,7 +44,12 @@ L:RegisterTranslations("enUS", function() return {
 	bar_shadowOfEbonrocDur = " Shadow of Ebonroc",
 	bar_shadowOfEbonrocCd = "Shadow of Ebonroc CD",
 	
-	msg_sparks = "Healers outrange Sparks until they despawn!",
+	trigger_sparkHit = "Shadowflame Spark", --CHAT_MSG_COMBAT_CREATURE_VS_PARTY_HITS // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
+	bar_sparksCd = "Next Sparks",
+	msg_sparksSoon = "Shadowflame Sparks in 2 seconds!",
+	msg_sparksSpawn = "Shadowflame Sparks spawned!",
+	msg_sparksYou = "Shadowflame Spark attacking YOU!",
+	msg_sparks = "Shadowflame Sparks spawn every 8s - Damage Immune, watch aggro!",
 } end)
 
 local timer = {
@@ -58,11 +63,15 @@ local timer = {
 	
 	shadowOfEbonrocCd = 8,
 	shadowOfEbonrocDur = 8,
+
+	sparksFirst = 16,
+	sparksCd = 8,
 }
 local icon = {
 	wingBuffet = "INV_Misc_MonsterScales_14",
 	shadowFlame = "Spell_Fire_Incinerate",
 	shadowOfEbonroc = "Spell_Shadow_GatherShadows",
+	sparks = "Spell_Fire_SelfDestruct",
 }
 local color = {
 	wingBuffetCd = "Cyan",
@@ -73,6 +82,8 @@ local color = {
 	
 	shadowOfEbonrocCd = "Black",
 	shadowOfEbonrocDur = "Magenta",
+
+	sparks = "Orange",
 }
 local syncName = {
 	wingBuffet = "EbonrocWingBuffet"..module.revision,
@@ -80,18 +91,24 @@ local syncName = {
 	shadowFlameHit = "EbonrocShadowflameHit"..module.revision,
 	shadowOfEbonroc = "EbonrocShadow"..module.revision,
 	shadowOfEbonrocFade = "EbonrocShadowFade"..module.revision,
+	sparks = "EbonrocSparks"..module.revision,
 }
 local spellId = {
 	shadowFlame = 22539,
+	sparkSpell = 30207,
 }
 
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_wingBuffet, trigger_shadowFlameCast, trigger_shadowFlameHit
+	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_shadowFlameHit, trigger_sparkHit
+	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_shadowFlameHit, trigger_sparkHit
+	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_wingBuffet, trigger_shadowFlameCast, trigger_shadowFlameHit, trigger_sparkHit
 	
+	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "Event") --trigger_sparkHit
+	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_PARTY_HITS", "Event") --trigger_sparkHit
+	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS", "Event") --trigger_sparkHit
+
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_shadowOfEbonrocYou
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_shadowOfEbonrocOther
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_shadowOfEbonrocOther
@@ -109,6 +126,7 @@ function module:OnEnable()
 	self:ThrottleSync(3, syncName.shadowFlameHit)
 	self:ThrottleSync(3, syncName.shadowOfEbonroc)
 	self:ThrottleSync(3, syncName.shadowOfEbonrocFade)
+	self:ThrottleSync(5, syncName.sparks)
 end
 
 function module:OnSetup()
@@ -116,6 +134,10 @@ function module:OnSetup()
 end
 
 function module:OnDisengage()
+	self:CancelScheduledEvent("EbonrocSparks")
+	self:CancelDelayedMessage(L["msg_sparksSoon"])
+	self:RemoveBar(L["bar_sparksCd"])
+	self:RemoveWarningSign(icon.sparks)
 end
 
 function module:OnEngage()	
@@ -134,7 +156,21 @@ function module:OnEngage()
 	
 	if self.db.profile.sparks then
 		self:Message(L["msg_sparks"], "Attention")
+		self:Bar(L["bar_sparksCd"], timer.sparksFirst, icon.sparks, true, color.sparks)
+		self:DelayedMessage(timer.sparksFirst - 2, L["msg_sparksSoon"], "Attention", false, nil, false)
+		self:ScheduleEvent("EbonrocSparks", self.SparksSpawn, timer.sparksFirst, self)
 	end
+end
+
+function module:SparksSpawn()
+	if not self.db.profile.sparks then return end
+	self:CancelScheduledEvent("EbonrocSparks")
+	self:CancelDelayedMessage(L["msg_sparksSoon"])
+	
+	self:Message(L["msg_sparksSpawn"], "Important", false, nil, false)
+	self:Bar(L["bar_sparksCd"], timer.sparksCd, icon.sparks, true, color.sparks)
+	self:DelayedMessage(timer.sparksCd - 2, L["msg_sparksSoon"], "Attention", false, nil, false)
+	self:ScheduleEvent("EbonrocSparks", self.SparksSpawn, timer.sparksCd, self)
 end
 
 function module:Event(msg)
@@ -158,6 +194,13 @@ function module:Event(msg)
 		local _,_,shadowOfEbonrocFadePlayer,_ = string.find(msg, L["trigger_shadowOfEbonrocFade"])
 		if shadowOfEbonrocFadePlayer == "you" then shadowOfEbonrocFadePlayer = UnitName("Player") end
 		self:Sync(syncName.shadowOfEbonrocFade .. " " .. shadowOfEbonrocFadePlayer)
+
+	elseif string.find(msg, L["trigger_sparkHit"]) then
+		self:Sync(syncName.sparks)
+		if self.db.profile.sparks and (string.find(msg, " hits you") or string.find(msg, " crits you") or string.find(msg, " you for ") or string.find(msg, "attacks. You")) then
+			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
+			self:WarningSign(icon.sparks, 2)
+		end
 	end
 end
 
@@ -165,6 +208,13 @@ function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
 	if spell == spellId.shadowFlame and action == "START" then
 		self:Sync(syncName.shadowFlameCast)
 		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
+		return
+	elseif spell == spellId.sparkSpell then
+		self:Sync(syncName.sparks)
+		if self.db.profile.sparks and ((SUPERWOW_VERSION and target == UnitGUID("player")) or target == UnitName("player")) then
+			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
+			self:WarningSign(icon.sparks, 2)
+		end
 		return
 	end
 end
@@ -184,6 +234,8 @@ function module:BigWigs_RecvSync(sync, rest, nick)
 		self:ShadowOfEbonroc(rest)
 	elseif sync == syncName.shadowOfEbonrocFade and rest and self.db.profile.curse then
 		self:ShadowOfEbonrocFade(rest)
+	elseif sync == syncName.sparks and self.db.profile.sparks then
+		self:SparksSpawn()
 	end
 end
 

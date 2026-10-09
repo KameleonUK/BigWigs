@@ -12,7 +12,7 @@ BWL & TMH Integration - 2026-09-05 (Version 30141)
 (BWL) Razorgore - egg counter fixed to 20 total, phase transition bar cleanup
 (BWL) Firemaw - Shadowflame floor zone alert, soak bar, and explosion tracking
 (BWL) Flamegor - Overbearing Rage mind control alert, health bar, and Diamond mark
-(BWL) Ebonroc - Shadowflame Spark reminder
+(BWL) Ebonroc - recurring Shadowflame Spark wave timers (8s), spawn alerts, and SuperWoW cast sync
 (TH) Selenaxx - added Rain of Destruction zone tracking module
 (TH) Timbermaw Trash - added comprehensive trash module
 (Core) & (Bars) - added GetCastTimeCoefficient, GetHealthPercent, SetRaidTargetForPlayer, CounterBar, ClickBar, UpdateBar, SetBar, ColorBar
