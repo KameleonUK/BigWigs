@@ -2,6 +2,16 @@
 Changelog for BigWigs
 --------------------------------------
 
+Broodcommander Axelus Encounter Module - 2026-10-10 (Version 30144)
+-------------------------------------------------------------------
+(Onyxia) Broodcommander Axelus - Added encounter module for Turtle WoW 1.18.1 Onyxia's Lair.
+- Searing Chains (47406) 5s cast warning and automatic dual raid target marking (Skull on 1st afflicted, Cross on 2nd) with debuff fade unmarking.
+- Personal alert for Chains ('CHAINS ON YOU - BREAK THEM!') with screen warning sign and alarm audio.
+- Melted Chains (48312) immediate raid wipe alert.
+- Calibrated 14.5s recurring Chains recast timer, 12.5s pull timer, 5.0s Tank DoT (47403) duration/21s recast, and 15s/30s Warder wave timers from empirical combat logs.
+- Added timed encounter test harness (/run BigWigs:GetModule("Axelus"):Test()) and automated Python verification suite.
+
+
 Ebonroc Sparks Wave Tracking & Comms Polish - 2026-10-10 (Version 30143)
 ------------------------------------------------------------------------
 (BWL) Ebonroc - Added wave counter tracking to Shadowflame Sparks ('Next Sparks (1)', '(2)', etc.) for clear encounter progression. De-escalated recurring 8s spawn announcements to 'Attention' (subtle yellow) to prevent alert fatigue and protect Wing Buffet / Shadow of Ebonroc taunt coms. Added independent 'sparksyou' toggle option for personal aggro alerts, and synced wave count state.
