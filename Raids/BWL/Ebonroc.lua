@@ -1,9 +1,9 @@
 
 local module, L = BigWigs:ModuleDeclaration("Ebonroc", "Blackwing Lair")
 
-module.revision = 30141
+module.revision = 30143
 module.enabletrigger = module.translatedName
-module.toggleoptions = {"wingbuffet", "shadowflame", "curse", "sparks", "bosskill"}
+module.toggleoptions = {"wingbuffet", "shadowflame", "curse", "sparks", "sparksyou", "bosskill"}
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Ebonroc",
@@ -21,8 +21,12 @@ L:RegisterTranslations("enUS", function() return {
 	curse_desc = "Warn for Shadow of Ebonroc",
 
 	sparks_cmd = "sparks",
-	sparks_name = "Shadowflame Sparks Alert",
-	sparks_desc = "Warn for recurring Shadowflame Spark waves (every 8s), timers, and personal aggro alerts",
+	sparks_name = "Shadowflame Sparks Bar",
+	sparks_desc = "Warn for recurring Shadowflame Spark waves (every 8s) with wave numbered countdown bars",
+
+	sparksyou_cmd = "sparksyou",
+	sparksyou_name = "Shadowflame Spark Aggro Alert",
+	sparksyou_desc = "Warn with sound alarm and warning icon when a Shadowflame Spark attacks or casts on YOU",
 	
 	
 	trigger_wingBuffet = "Ebonroc begins to cast Wing Buffet.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
@@ -46,8 +50,11 @@ L:RegisterTranslations("enUS", function() return {
 	
 	trigger_sparkHit = "Shadowflame Spark", --CHAT_MSG_COMBAT_CREATURE_VS_PARTY_HITS // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
 	bar_sparksCd = "Next Sparks",
+	bar_sparksCdCount = "Next Sparks (%d)",
 	msg_sparksSoon = "Shadowflame Sparks in 2 seconds!",
+	msg_sparksSoonCount = "Shadowflame Sparks (%d) in 2 seconds!",
 	msg_sparksSpawn = "Shadowflame Sparks spawned!",
+	msg_sparksSpawnCount = "Shadowflame Sparks (%d) spawned!",
 	msg_sparksYou = "Shadowflame Spark attacking YOU!",
 	msg_sparks = "Shadowflame Sparks spawn every 8s - Damage Immune, watch aggro!",
 } end)
@@ -131,13 +138,21 @@ end
 
 function module:OnSetup()
 	self.started = nil
+	self.sparksWaveCount = 0
 end
 
 function module:OnDisengage()
 	self:CancelScheduledEvent("EbonrocSparks")
 	self:CancelDelayedMessage(L["msg_sparksSoon"])
+	if self.sparksWaveCount and self.sparksWaveCount > 0 then
+		self:CancelDelayedMessage(string.format(L["msg_sparksSoonCount"], self.sparksWaveCount + 1))
+		self:RemoveBar(string.format(L["bar_sparksCdCount"], self.sparksWaveCount + 1))
+		self:RemoveBar(string.format(L["bar_sparksCdCount"], self.sparksWaveCount))
+	end
+	self:RemoveBar(string.format(L["bar_sparksCdCount"], 1))
 	self:RemoveBar(L["bar_sparksCd"])
 	self:RemoveWarningSign(icon.sparks)
+	self.sparksWaveCount = 0
 end
 
 function module:OnEngage()	
@@ -154,26 +169,38 @@ function module:OnEngage()
 		self:Bar(L["bar_shadowOfEbonrocCd"], timer.shadowOfEbonrocCd, icon.shadowOfEbonroc, true, color.shadowOfEbonrocCd)
 	end
 	
+	self.sparksWaveCount = 0
 	if self.db.profile.sparks then
 		self:Message(L["msg_sparks"], "Attention")
-		self:Bar(L["bar_sparksCd"], timer.sparksFirst, icon.sparks, true, color.sparks)
-		self:DelayedMessage(timer.sparksFirst - 2, L["msg_sparksSoon"], "Attention", false, nil, false)
+		self:Bar(string.format(L["bar_sparksCdCount"], 1), timer.sparksFirst, icon.sparks, true, color.sparks)
+		self:DelayedMessage(timer.sparksFirst - 2, string.format(L["msg_sparksSoonCount"], 1), "Attention", false, nil, false)
 		self:ScheduleEvent("EbonrocSparks", self.SparksSpawn, timer.sparksFirst, self)
 	end
 end
 
-function module:SparksSpawn()
+function module:SparksSpawn(wave)
 	if not self.db.profile.sparks then return end
+	if wave and tonumber(wave) then
+		self.sparksWaveCount = tonumber(wave)
+	else
+		self.sparksWaveCount = (self.sparksWaveCount or 0) + 1
+	end
+
 	self:CancelScheduledEvent("EbonrocSparks")
 	self:CancelDelayedMessage(L["msg_sparksSoon"])
+	self:CancelDelayedMessage(string.format(L["msg_sparksSoonCount"], self.sparksWaveCount))
+	self:RemoveBar(string.format(L["bar_sparksCdCount"], self.sparksWaveCount))
+	self:RemoveBar(L["bar_sparksCd"])
 	
-	self:Message(L["msg_sparksSpawn"], "Important", false, nil, false)
-	self:Bar(L["bar_sparksCd"], timer.sparksCd, icon.sparks, true, color.sparks)
-	self:DelayedMessage(timer.sparksCd - 2, L["msg_sparksSoon"], "Attention", false, nil, false)
+	self:Message(string.format(L["msg_sparksSpawnCount"], self.sparksWaveCount), "Attention", false, nil, false)
+	self:Bar(string.format(L["bar_sparksCdCount"], self.sparksWaveCount + 1), timer.sparksCd, icon.sparks, true, color.sparks)
+	self:DelayedMessage(timer.sparksCd - 2, string.format(L["msg_sparksSoonCount"], self.sparksWaveCount + 1), "Attention", false, nil, false)
 	self:ScheduleEvent("EbonrocSparks", self.SparksSpawn, timer.sparksCd, self)
 end
 
 function module:Event(msg)
+	if not msg then return end
+
 	if msg == L["trigger_wingBuffet"] then
 		self:Sync(syncName.wingBuffet)
 	
@@ -196,8 +223,9 @@ function module:Event(msg)
 		self:Sync(syncName.shadowOfEbonrocFade .. " " .. shadowOfEbonrocFadePlayer)
 
 	elseif string.find(msg, L["trigger_sparkHit"]) then
-		self:Sync(syncName.sparks)
-		if self.db.profile.sparks and (string.find(msg, " hits you") or string.find(msg, " crits you") or string.find(msg, " you for ") or string.find(msg, "attacks. You")) then
+		local warnYou = self.db.profile.sparksyou
+		if warnYou == nil then warnYou = self.db.profile.sparks end
+		if warnYou and (string.find(msg, " hits you") or string.find(msg, " crits you") or string.find(msg, " you for ") or string.find(msg, "attacks. You")) then
 			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
 			self:WarningSign(icon.sparks, 2)
 		end
@@ -205,13 +233,17 @@ function module:Event(msg)
 end
 
 function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
+	if not spell then return end
+
 	if spell == spellId.shadowFlame and action == "START" then
 		self:Sync(syncName.shadowFlameCast)
 		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
 		return
 	elseif spell == spellId.sparkSpell then
-		self:Sync(syncName.sparks)
-		if self.db.profile.sparks and ((SUPERWOW_VERSION and target == UnitGUID("player")) or target == UnitName("player")) then
+		local _, playerGuid = UnitExists("player")
+		local warnYou = self.db.profile.sparksyou
+		if warnYou == nil then warnYou = self.db.profile.sparks end
+		if warnYou and target and (target == playerGuid or target == UnitName("player") or UnitIsUnit(target, "player")) then
 			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
 			self:WarningSign(icon.sparks, 2)
 		end
@@ -235,7 +267,7 @@ function module:BigWigs_RecvSync(sync, rest, nick)
 	elseif sync == syncName.shadowOfEbonrocFade and rest and self.db.profile.curse then
 		self:ShadowOfEbonrocFade(rest)
 	elseif sync == syncName.sparks and self.db.profile.sparks then
-		self:SparksSpawn()
+		self:SparksSpawn(rest)
 	end
 end
 

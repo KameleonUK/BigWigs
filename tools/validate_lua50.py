@@ -38,6 +38,9 @@ def check_file(path):
             if "string.gmatch" in cleaned and "string.gmatch or" not in cleaned:
                 violations.append((line_num, line.strip(), "Lua 5.1 'string.gmatch' (use string.gfind in Lua 5.0)"))
 
+            if "UnitGUID(" in cleaned:
+                violations.append((line_num, line.strip(), "Retail API 'UnitGUID' (not available in WoW 1.12.1, use UnitExists in SuperWoW)"))
+
     return violations
 
 def main():

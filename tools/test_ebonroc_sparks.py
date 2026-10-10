@@ -55,6 +55,7 @@ def test_syntax_and_lua50():
                 raise AssertionError(f"Line {line_num}: Lua 5.1 '#' operator found on '{var}'")
         assert "string.match" not in cleaned or "string.match or" in cleaned, f"Line {line_num}: string.match found"
         assert "string.gmatch" not in cleaned or "string.gmatch or" in cleaned, f"Line {line_num}: string.gmatch found"
+        assert "UnitGUID(" not in cleaned, f"Line {line_num}: UnitGUID found (not available in WoW 1.12.1/SuperWoW, use UnitExists)"
     
     print("  [PASS] Zero Lua 5.0 violations found in Ebonroc.lua.")
     return code
@@ -64,14 +65,16 @@ def test_module_structure(code):
     
     # Toggle options
     assert '"sparks"' in code, "Missing 'sparks' in toggleoptions"
+    assert '"sparksyou"' in code, "Missing 'sparksyou' in toggleoptions"
     
     # Translations
-    assert 'sparks_name = "Shadowflame Sparks Alert"' in code, "Missing sparks_name translation"
-    assert 'sparks_desc = "Warn for recurring Shadowflame Spark waves (every 8s), timers, and personal aggro alerts"' in code, "Missing sparks_desc translation"
+    assert 'sparks_name = "Shadowflame Sparks Bar"' in code, "Missing sparks_name translation"
+    assert 'sparksyou_name = "Shadowflame Spark Aggro Alert"' in code, "Missing sparksyou_name translation"
     assert 'trigger_sparkHit = "Shadowflame Spark"' in code, "Missing trigger_sparkHit translation"
-    assert 'bar_sparksCd = "Next Sparks"' in code, "Missing bar_sparksCd translation"
+    assert 'bar_sparksCdCount = "Next Sparks (%d)"' in code, "Missing bar_sparksCdCount translation"
     assert 'msg_sparksSoon = "Shadowflame Sparks in 2 seconds!"' in code, "Missing msg_sparksSoon translation"
-    assert 'msg_sparksSpawn = "Shadowflame Sparks spawned!"' in code, "Missing msg_sparksSpawn translation"
+    assert 'msg_sparksSoonCount = "Shadowflame Sparks (%d) in 2 seconds!"' in code, "Missing msg_sparksSoonCount translation"
+    assert 'msg_sparksSpawnCount = "Shadowflame Sparks (%d) spawned!"' in code, "Missing msg_sparksSpawnCount translation"
     assert 'msg_sparksYou = "Shadowflame Spark attacking YOU!"' in code, "Missing msg_sparksYou translation"
     assert 'msg_sparks = "Shadowflame Sparks spawn every 8s - Damage Immune, watch aggro!"' in code, "Missing msg_sparks translation"
     
@@ -136,6 +139,7 @@ def test_simulation_state_machine():
     # Mock BigWigs Environment
     class Profile:
         sparks = True
+        sparksyou = True
         wingbuffet = True
         shadowflame = True
         curse = True
@@ -153,8 +157,8 @@ def test_simulation_state_machine():
             self.warning_signs = {}
             self.syncs_sent = []
             self.db = DB()
-            self.revision = 30141
-            self.wave_count = 0
+            self.revision = 30143
+            self.sparksWaveCount = 0
 
         def Bar(self, text, duration, icon, flag, color):
             self.bars[text] = {"duration": duration, "icon": icon, "color": color}
@@ -199,91 +203,106 @@ def test_simulation_state_machine():
 
         # Module methods matching Ebonroc.lua
         def OnEngage(self):
+            self.sparksWaveCount = 0
             if self.db.profile.sparks:
                 self.Message("Shadowflame Sparks spawn every 8s - Damage Immune, watch aggro!", "Attention")
-                self.Bar("Next Sparks", 16, "Spell_Fire_SelfDestruct", True, "Orange")
-                self.DelayedMessage(14, "Shadowflame Sparks in 2 seconds!", "Attention")
+                self.Bar("Next Sparks (1)", 16, "Spell_Fire_SelfDestruct", True, "Orange")
+                self.DelayedMessage(14, "Shadowflame Sparks (1) in 2 seconds!", "Attention")
                 self.ScheduleEvent("EbonrocSparks", self.SparksSpawn, 16, self)
 
-        def SparksSpawn(self):
+        def SparksSpawn(self, wave=None):
             if not self.db.profile.sparks: return
-            self.wave_count += 1
+            if wave:
+                self.sparksWaveCount = wave
+            else:
+                self.sparksWaveCount = (self.sparksWaveCount or 0) + 1
             self.CancelScheduledEvent("EbonrocSparks")
             self.CancelDelayedMessage("Shadowflame Sparks in 2 seconds!")
-            self.Message("Shadowflame Sparks spawned!", "Important")
-            self.Bar("Next Sparks", 8, "Spell_Fire_SelfDestruct", True, "Orange")
-            self.DelayedMessage(6, "Shadowflame Sparks in 2 seconds!", "Attention")
+            self.CancelDelayedMessage(f"Shadowflame Sparks ({self.sparksWaveCount}) in 2 seconds!")
+            self.RemoveBar(f"Next Sparks ({self.sparksWaveCount})")
+            self.Message(f"Shadowflame Sparks ({self.sparksWaveCount}) spawned!", "Attention")
+            self.Bar(f"Next Sparks ({self.sparksWaveCount + 1})", 8, "Spell_Fire_SelfDestruct", True, "Orange")
+            self.DelayedMessage(6, f"Shadowflame Sparks ({self.sparksWaveCount + 1}) in 2 seconds!", "Attention")
             self.ScheduleEvent("EbonrocSparks", self.SparksSpawn, 8, self)
 
         def OnEvent(self, msg, player_name="Testplayer"):
             if "Shadowflame Spark" in msg:
-                self.Sync("EbonrocSparks30141")
-                if " hits you" in msg or " crits you" in msg or " you for " in msg or "attacks. You" in msg:
+                warn_you = self.db.profile.sparksyou if hasattr(self.db.profile, "sparksyou") else self.db.profile.sparks
+                if warn_you and (" hits you" in msg or " crits you" in msg or " you for " in msg or "attacks. You" in msg):
                     self.Message("Shadowflame Spark attacking YOU!", "Personal")
                     self.WarningSign("Spell_Fire_SelfDestruct", 2)
 
-        def OnCastEvent(self, caster, target, action, spell, player_guid="0x123"):
+        def OnCastEvent(self, caster, target, action, spell, player_guid="0x123", player_name="Testplayer"):
             if spell == 30207:
-                self.Sync("EbonrocSparks30141")
-                if target == player_guid:
+                warn_you = self.db.profile.sparksyou if hasattr(self.db.profile, "sparksyou") else self.db.profile.sparks
+                if warn_you and target and (target == player_guid or target == player_name):
                     self.Message("Shadowflame Spark attacking YOU!", "Personal")
                     self.WarningSign("Spell_Fire_SelfDestruct", 2)
 
         def OnDisengage(self):
             self.CancelScheduledEvent("EbonrocSparks")
             self.CancelDelayedMessage("Shadowflame Sparks in 2 seconds!")
+            if self.sparksWaveCount and self.sparksWaveCount > 0:
+                self.CancelDelayedMessage(f"Shadowflame Sparks ({self.sparksWaveCount + 1}) in 2 seconds!")
+                self.RemoveBar(f"Next Sparks ({self.sparksWaveCount + 1})")
+                self.RemoveBar(f"Next Sparks ({self.sparksWaveCount})")
+            self.RemoveBar("Next Sparks (1)")
             self.RemoveBar("Next Sparks")
             self.RemoveWarningSign("Spell_Fire_SelfDestruct")
+            self.sparksWaveCount = 0
 
     mod = MockModule()
     
     # 1. Simulate Boss Pull
     print("  1. Simulating Boss Pull (OnEngage):")
     mod.OnEngage()
-    assert "Next Sparks" in mod.bars, "Engage failed to start 'Next Sparks' bar"
-    assert mod.bars["Next Sparks"]["duration"] == 16, "Initial bar duration must be 16s"
-    assert "Shadowflame Sparks in 2 seconds!" in mod.delayed_messages, "Missing 2s delayed message"
+    assert "Next Sparks (1)" in mod.bars, "Engage failed to start 'Next Sparks (1)' bar"
+    assert mod.bars["Next Sparks (1)"]["duration"] == 16, "Initial bar duration must be 16s"
+    assert "Shadowflame Sparks (1) in 2 seconds!" in mod.delayed_messages, "Missing 2s delayed message"
     assert "EbonrocSparks" in mod.scheduled_events, "Missing scheduled event"
     print("     -> [OK] Initial 16s bar, 14s pre-warning, and event scheduled.")
 
     # 2. Simulate Wave 1 Spawning
     print("  2. Simulating Wave 1 Spawning:")
     mod.SparksSpawn()
-    assert mod.wave_count == 1, "Wave count mismatch"
-    assert "Next Sparks" in mod.bars, "Missing 'Next Sparks' bar after wave spawn"
-    assert mod.bars["Next Sparks"]["duration"] == 8, "Repeating wave bar must be 8s"
-    assert ("Shadowflame Sparks spawned!", "Important") in mod.messages, "Missing spawn alert message"
+    assert mod.sparksWaveCount == 1, "Wave count mismatch"
+    assert "Next Sparks (1)" not in mod.bars, "'Next Sparks (1)' should be cleared on wave spawn"
+    assert "Next Sparks (2)" in mod.bars, "Missing 'Next Sparks (2)' bar after wave spawn"
+    assert mod.bars["Next Sparks (2)"]["duration"] == 8, "Repeating wave bar must be 8s"
+    assert ("Shadowflame Sparks (1) spawned!", "Attention") in mod.messages, "Missing spawn alert message"
     assert "EbonrocSparks" in mod.scheduled_events, "Missing scheduled next wave event"
-    print("     -> [OK] Wave 1 spawned: 8s repeating bar, alert message, next wave scheduled.")
+    print("     -> [OK] Wave 1 spawned: 'Next Sparks (2)' 8s bar, Attention message, next wave scheduled.")
 
     # 3. Simulate Waves 2 to 5 Looping
     print("  3. Simulating 5 Waves Looping (Zero Damage Taken):")
     for i in range(2, 6):
         mod.SparksSpawn()
-        assert mod.bars["Next Sparks"]["duration"] == 8
-    assert mod.wave_count == 5
-    print("     -> [OK] 5 consecutive waves looped cleanly with exact 8.0s cadence.")
+        assert mod.bars[f"Next Sparks ({i + 1})"]["duration"] == 8
+    assert mod.sparksWaveCount == 5
+    assert "Next Sparks (6)" in mod.bars
+    print("     -> [OK] 5 consecutive waves looped cleanly with exact 8.0s cadence and sequential bars.")
 
     # 4. Simulate Personal Aggro via Combat Log
     print("  4. Simulating Combat Log Hit on Player:")
     mod.OnEvent("Shadowflame Spark hits you for 450 Fire damage.")
     assert ("Shadowflame Spark attacking YOU!", "Personal") in mod.messages, "Personal alert message failed"
     assert "Spell_Fire_SelfDestruct" in mod.warning_signs, "WarningSign failed to trigger"
-    assert "EbonrocSparks30141" in mod.syncs_sent, "Sync failed to send"
-    print("     -> [OK] Combat log hit triggers Personal Warning, WarningSign, and Raid Sync.")
+    assert len(mod.syncs_sent) == 0, "Sparks hit should not broadcast wave sync (prevents timer resets)"
+    print("     -> [OK] Combat log hit triggers Personal Warning and WarningSign without spamming wave sync.")
 
     # 5. Simulate SuperWoW UNIT_CASTEVENT Targeting Player
     print("  5. Simulating SuperWoW Spell 30207 targeting Player:")
     mod.OnCastEvent("0xF13000FE7F", "0x123", "START", 30207, player_guid="0x123")
     assert mod.warning_signs["Spell_Fire_SelfDestruct"] == 2
+    assert len(mod.syncs_sent) == 0, "Sparks cast should not broadcast wave sync"
     print("     -> [OK] SuperWoW cast targeting player triggers Personal Warning & WarningSign.")
 
     # 6. Simulate Wipe / Disengage Cleanup
     print("  6. Simulating Wipe / Disengage Cleanup:")
     mod.OnDisengage()
-    assert "Next Sparks" not in mod.bars, "Bar not cleared on disengage"
+    assert len(mod.bars) == 0, f"Bars not cleared on disengage: {mod.bars}"
     assert "EbonrocSparks" not in mod.scheduled_events, "Scheduled event not cleared"
-    assert "Shadowflame Sparks in 2 seconds!" not in mod.delayed_messages, "Delayed message not cleared"
+    assert mod.sparksWaveCount == 0, "Wave count not reset on disengage"
     assert "Spell_Fire_SelfDestruct" not in mod.warning_signs, "WarningSign not cleared"
     print("     -> [OK] All bars, schedules, messages, and warning signs cleanly flushed on disengage.")
 
@@ -291,7 +310,7 @@ def test_simulation_state_machine():
 
 def main():
     print("=" * 76)
-    print("  BIGWIGS 30141: EBONROC SHADOWFLAME SPARKS VERIFICATION SUITE")
+    print("  BIGWIGS 30143: EBONROC SHADOWFLAME SPARKS VERIFICATION SUITE")
     print("=" * 76)
     
     code = test_syntax_and_lua50()

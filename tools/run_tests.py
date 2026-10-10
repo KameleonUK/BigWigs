@@ -32,7 +32,7 @@ CHECKS = [
 
 def main():
     print("=" * 80)
-    print("BIGWIGS 30141 AUTOMATED VERIFICATION SUITE")
+    print("BIGWIGS 30143 AUTOMATED VERIFICATION SUITE")
     print("=" * 80)
     
     total_start = time.time()

@@ -2,6 +2,14 @@
 Changelog for BigWigs
 --------------------------------------
 
+Ebonroc Sparks Wave Tracking & Comms Polish - 2026-10-10 (Version 30143)
+------------------------------------------------------------------------
+(BWL) Ebonroc - Added wave counter tracking to Shadowflame Sparks ('Next Sparks (1)', '(2)', etc.) for clear encounter progression. De-escalated recurring 8s spawn announcements to 'Attention' (subtle yellow) to prevent alert fatigue and protect Wing Buffet / Shadow of Ebonroc taunt coms. Added independent 'sparksyou' toggle option for personal aggro alerts, and synced wave count state.
+
+Ebonroc Sparks Hotfix - 2026-10-10 (Version 30142)
+--------------------------------------------------
+(BWL) Ebonroc - Fixed screen Lua error 'attempt to call global UnitGUID (a nil value)' during Shadowflame Spark cast events by replacing invalid Retail UnitGUID with canonical SuperWoW UnitExists/UnitIsUnit player resolution. Added safe nil guards for UNIT_CASTEVENT. Removed extraneous wave sync broadcasts from individual spark damage hits and casts to prevent premature wave timer resets and alert spam.
+
 BWL & TMH Integration - 2026-09-05 (Version 30141)
 -------------------------------------------------
 (BWL) Ezzel Darkbrewer - new module with Ton'Raka Charge, Chemical Rage, Acid Bomb, Transmute to Gold, and CoT check
