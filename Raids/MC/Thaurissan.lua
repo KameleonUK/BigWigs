@@ -2,10 +2,15 @@ local module, L = BigWigs:ModuleDeclaration("Sorcerer-Thane Thaurissan", "Molten
 
 module.revision = 30003
 module.enabletrigger = module.translatedName
-module.toggleoptions = { "runetimers", "runeofdetonation", "runeofcombustion", "bosskill" }
+module.toggleoptions = { "runetimers", "runeofdetonation", "runeofcombustion", "floorwarn", "bosskill" }
 module.zonename = {
 	AceLibrary("AceLocale-2.2"):new("BigWigs")["Molten Core"],
 	AceLibrary("Babble-Zone-2.2")["Molten Core"],
+}
+
+-- module defaults
+module.defaultDB = {
+	floorwarn = true,
 }
 
 L:RegisterTranslations("enUS", function() return {
@@ -22,6 +27,10 @@ L:RegisterTranslations("enUS", function() return {
 	runeofcombustion_cmd = "runeofcombustion",
 	runeofcombustion_name = "Rune of Combustion Alert",
 	runeofcombustion_desc = "Personal alert when you have Rune of Combustion and not Rune of Power",
+
+	floorwarn_cmd = "floorwarn",
+	floorwarn_name = "Rune of Power Warning",
+	floorwarn_desc = "Warns shortly before Rune of Power (floor zone) is recast in a new location (every 25% of boss HP); must be enabled before pull",
 
 	trigger_detonation = "afflicted by Rune of Detonation",
 	trigger_combustion = "afflicted by Rune of Combustion",
@@ -42,11 +51,15 @@ L:RegisterTranslations("enUS", function() return {
 	bar_combustionNext = "Next Combustion Rune",
 	warn_detonation = "MOVE_OUT",
 	warn_combustion = "GET_IN",
+
+	msg_floorwarn = "Floor Zone moving soon! %s%%",
 } end)
 
 local hasRuneOfDetonation = false
 local hasRuneOfPower = false
 local hasRuneOfCombustion = false
+local nextFloorWarn = 75
+local floorWarn = 3 -- how many % of HP before the recast the warning triggers
 
 local timer = {
 	runeCooldown = { 18, 22 }, -- average of 20
@@ -80,15 +93,20 @@ function module:OnSetup()
 	hasRuneOfDetonation = false
 	hasRuneOfPower = false
 	hasRuneOfCombustion = false
+	nextFloorWarn = 75
 end
 
 function module:OnEngage()
 	hasRuneOfDetonation = false
 	hasRuneOfPower = false
 	hasRuneOfCombustion = false
+	nextFloorWarn = 75
 
 	if self.db.profile.runetimers then
 		self:IntervalBar(L["bar_detonationNext"], timer.runeCooldown[1], timer.runeCooldown[2], icon.runeDetonation, true, color.runeUpcoming)
+	end
+	if self.db.profile.floorwarn then
+		self:ScheduleRepeatingEvent("ThaurissanHealthCheck", self.CheckHealth, 0.25, self)
 	end
 end
 
@@ -96,6 +114,8 @@ function module:OnDisengage()
 	hasRuneOfDetonation = false
 	hasRuneOfPower = false
 	hasRuneOfCombustion = false
+	nextFloorWarn = 75
+	self:CancelScheduledEvent("ThaurissanHealthCheck")
 end
 
 function module:Event(msg)
@@ -170,6 +190,36 @@ function module:DetonationCast()
 		self:Bar(L["bar_runeDetonation"], timer.runeDuration, icon.runeDetonation, true, color.runeDetonation)
 		-- schedule next opposite rune
 		self:DelayedIntervalBar(timer.runeDuration, L["bar_combustionNext"], timer.runeCooldown[1] - timer.runeDuration, timer.runeCooldown[2] - timer.runeDuration, icon.runeCombustion, true, color.runeUpcoming)
+	end
+end
+
+function module:GetBossUnit()
+	-- resolve the boss unit id by scanning the player's and raid's targets
+	if UnitExists("Target") and UnitName("Target") == module.translatedName then
+		return "Target"
+	end
+	for i = 1, GetNumRaidMembers() do
+		local unit = "raid" .. i .. "Target"
+		if UnitExists(unit) and UnitName(unit) == module.translatedName then
+			return unit
+		end
+	end
+	return nil
+end
+
+function module:CheckHealth()
+	local unit = self:GetBossUnit()
+	if not unit or nextFloorWarn <= 0 then
+		self:CancelScheduledEvent("ThaurissanHealthCheck")
+		return
+	end
+
+	local percent = BigWigs:GetHealthPercent(unit, true)
+	if percent and percent <= (nextFloorWarn + floorWarn) then
+		if self.db.profile.floorwarn then
+			self:Message(string.format(L["msg_floorwarn"], nextFloorWarn), "Attention")
+		end
+		nextFloorWarn = nextFloorWarn - 25
 	end
 end
 
