@@ -2,6 +2,13 @@
 Changelog for BigWigs
 --------------------------------------
 
+Molten Core Polish & Native Compiler Verification - 2026-10-12 (Version 30145)
+-----------------------------------------------------------------------------
+(MC) Sorcerer-Thane Thaurissan - Added Rune of Power warning ('Floor Zone moving soon!') with recurring health-check event at 75%, 50%, and 25% boss HP.
+(MC) Ragnaros - Added Elemental Fire duration tracking bars and fade event listeners. Added tank swap detection with fire resistance threshold aggro warning, Wrath of Ragnaros knockback hit/resist notifications, and automated Skull raid target marking for active tanks.
+(Tools) - Added check_lua50_syntax.py native Lua 5.0.3 bytecode compiler gate (luac50.exe -p) and integrated into tools/run_tests.py. Added WoW 1.12.1 FrameXML/API mock harness (tools/wow_api_mock.lua).
+
+
 Broodcommander Axelus Encounter Module - 2026-10-10 (Version 30144)
 -------------------------------------------------------------------
 (Onyxia) Broodcommander Axelus - Added encounter module for Turtle WoW 1.18.1 Onyxia's Lair.
