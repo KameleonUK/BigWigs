@@ -25,6 +25,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ADDON_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
 CHECKS = [
+    ("Native Lua 5.0.3 Compiler (check_lua50_syntax.py)", [sys.executable, os.path.join(SCRIPT_DIR, "check_lua50_syntax.py")]),
     ("Lua 5.0 Compliance (validate_lua50.py)", [sys.executable, os.path.join(SCRIPT_DIR, "validate_lua50.py")]),
     ("Lua Syntax Audits (check_lua_syntax_problems.py)", [sys.executable, os.path.join(SCRIPT_DIR, "check_lua_syntax_problems.py")]),
     ("Ebonroc Sparks Harness (test_ebonroc_sparks.py)", [sys.executable, os.path.join(SCRIPT_DIR, "test_ebonroc_sparks.py")]),
