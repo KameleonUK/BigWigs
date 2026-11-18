@@ -48,8 +48,8 @@ L:RegisterTranslations("enUS", function() return {
 	bodycasts_name = "Body Cast Bars",
 	bodycasts_desc = "Show 10s cast bars for Dreamform's Return to Body and Archdruid Kronn's Reform Body",
 
-	trigger_returnBody = "Dreamform of Kronn begins to cast Return to Body%.",
-	trigger_reformBody = "Archdruid Kronn begins to cast Reform Body%.",
+	spell_returnBody = "Return to Body", -- cast by Dreamform of Kronn
+	spell_reformBody = "Reform Body", -- cast by Archdruid Kronn
 	bar_returnBody = "Return to Body",
 	bar_reformBody = "Reform Body",
 } end )
@@ -97,8 +97,8 @@ function module:OnEnable()
 	self:ThrottleSync(1, syncName.feverFade)
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "CastEvent") -- TODO: remove if BUFF covers casts properly
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "CastEvent")
+	-- the combat log reports each cast start once, whatever chat event the server used for it
+	self:RegisterCombatLog("SPELL_CAST_START", {L["spell_returnBody"], L["spell_reformBody"]}, "CastStartEvent")
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "AfflictionEvent")
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "AfflictionEvent")
 	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "AfflictionEvent")
@@ -107,10 +107,11 @@ function module:OnEnable()
 	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "FadeEvent")
 end
 
-function module:CastEvent(msg)
-	if string.find(msg, L["trigger_returnBody"]) then
+-- ev is described at RegisterCombatLog in Core.lua
+function module:CastStartEvent(ev)
+	if ev.sourceName == dreamKronn and ev.spellName == L["spell_returnBody"] then
 		self:Sync(syncName.returnBody)
-	elseif string.find(msg, L["trigger_reformBody"]) then
+	elseif ev.sourceName == realKronn and ev.spellName == L["spell_reformBody"] then
 		self:Sync(syncName.reformBody)
 	end
 end
@@ -440,7 +441,7 @@ function module:Test()
 	self:Message("Archdruid Kronn test started", "Positive")
 
 	-- k = Kronn HP (counting down), d = Dream HP (counting up)
-	-- cast flags trigger through CastEvent at k=0/d=100
+	-- cast flags trigger through CastStartEvent at k=0/d=100
 	local steps = {
 		{t = 1,  k = 95, d = 5  },
 		{t = 3,  k = 80, d = 15 },
@@ -472,10 +473,10 @@ function module:Test()
 			module.kronnHp = k
 			module.dreamHp = d
 			if k <= 0 then
-				module:CastEvent("Archdruid Kronn begins to cast Reform Body.")
+				module:CastStartEvent({ sourceName = realKronn, spellName = L["spell_reformBody"] })
 			end
 			if d >= 100 then
-				module:CastEvent("Dreamform of Kronn begins to cast Return to Body.")
+				module:CastStartEvent({ sourceName = dreamKronn, spellName = L["spell_returnBody"] })
 			end
 			module:UpdateHpFrame()
 		end, e.t)
@@ -586,7 +587,7 @@ function module:TestFeverMulti()
 end
 
 -- Spoofs Dreamform's Return to Body and Archdruid Kronn's Reform Body cast
--- begin lines through CastEvent. The first cast is cancelled mid-flight to
+-- begin events through CastStartEvent. The first cast is cancelled mid-flight to
 -- exercise the early-cancel path; the second runs to completion.
 -- Usage: /run local m=BigWigs:GetModule("Archdruid Kronn"); BigWigs:SetupModule("Archdruid Kronn"); m:TestCasts();
 function module:TestCasts()
@@ -595,11 +596,11 @@ function module:TestCasts()
 	self:SendEngageSync()
 	self:Message("Kronn cast bar test started", "Positive")
 
-	local rtbBegin = "Dreamform of Kronn begins to cast Return to Body."
-	local rfbBegin = "Archdruid Kronn begins to cast Reform Body."
+	local rtbBegin = { sourceName = dreamKronn, spellName = L["spell_returnBody"] }
+	local rfbBegin = { sourceName = realKronn, spellName = L["spell_reformBody"] }
 
 	-- t=2: Return to Body begins (10s cast)
-	self:ScheduleEvent("KronnTestRtbBegin", self.CastEvent, 2, self, rtbBegin)
+	self:ScheduleEvent("KronnTestRtbBegin", self.CastStartEvent, 2, self, rtbBegin)
 	-- t=7: cancel mid-cast (5s in, 5s remaining) to verify early-cancel
 	self:ScheduleEvent("KronnTestRtbCancel", function()
 		module:RemoveBar(L["bar_returnBody"])
@@ -607,7 +608,7 @@ function module:TestCasts()
 	end, 7)
 
 	-- t=14: Reform Body begins (10s cast, runs to completion)
-	self:ScheduleEvent("KronnTestRfbBegin", self.CastEvent, 14, self, rfbBegin)
+	self:ScheduleEvent("KronnTestRfbBegin", self.CastStartEvent, 14, self, rfbBegin)
 
 	-- t=26: cleanup
 	self:ScheduleEvent("KronnTestCastsEnd", function()

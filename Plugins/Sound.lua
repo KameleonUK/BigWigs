@@ -203,7 +203,7 @@ local function VoiceGroupToggle(key, name, desc)
 end
 
 -- PlaySound takes no channel, so the default raid warning is played from its file instead
-local raidWarningFile = "Sound\\Interface\\RaidWarning.wav"
+local raidWarningFile = "Sound\\Interface\\RaidWarning.wav"
 
 -- Spoken warnings. Each rule is { voice file, group, words that must all appear, words that must not },
 -- checked against the lower-cased English warning text; the first rule that fits picks the line,
@@ -308,6 +308,26 @@ local voiceRules = {
 	{ "Move", "raid", {"move!"}, {} },
 	{ "Move", "raid", {" - move"}, {} },
 }
+
+-- Wyrmguard vulnerabilities ("Skull Wyrmguard: Fire Vulnerability"): one line per mark and school,
+-- and the school alone for an unmarked Wyrmguard. They go first, ahead of the general rules.
+do
+	local marks = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
+	local schools = { "Fire", "Frost", "Nature", "Shadow", "Arcane" }
+	local wyrmguardRules = {}
+	for _, mark in ipairs(marks) do
+		for _, school in ipairs(schools) do
+			table.insert(wyrmguardRules, { "Vuln_" .. mark .. "_" .. school, "vuln",
+				{ string.lower(mark) .. " wyrmguard", string.lower(school) .. " vulnerability" }, {} })
+		end
+	end
+	for _, school in ipairs(schools) do
+		table.insert(wyrmguardRules, { "Vuln" .. school, "vuln", { "wyrmguard", string.lower(school) .. " vulnerability" }, {} })
+	end
+	for i = table.getn(wyrmguardRules), 1, -1 do
+		table.insert(voiceRules, 1, wyrmguardRules[i])
+	end
+end
 
 local function FindVoiceLine(text)
 	local low = string.lower(text)

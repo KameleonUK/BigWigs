@@ -4,6 +4,7 @@ local module, L = BigWigs:ModuleDeclaration("Ebonroc", "Blackwing Lair")
 module.revision = 30146
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wingbuffet", "shadowflame", "curse", "sparks", "sparksyou", "bosskill"}
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Ebonroc",
@@ -100,34 +101,22 @@ local syncName = {
 	shadowOfEbonrocFade = "EbonrocShadowFade"..module.revision,
 	sparks = "EbonrocSparks"..module.revision,
 }
-local spellId = {
-	shadowFlame = 22539,
-	sparkSpell = 30207,
+-- spell IDs, with the English name as a fallback match (see RegisterCombatLog in Core.lua)
+local spell = {
+	wingBuffet = {23339, "Wing Buffet"},
+	shadowFlame = {22539, "Shadow Flame"},
+	shadowOfEbonroc = {23340, "Shadow of Ebonroc"},
 }
 
 function module:OnEnable()
-	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_shadowFlameHit, trigger_sparkHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_shadowFlameHit, trigger_sparkHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_wingBuffet, trigger_shadowFlameCast, trigger_shadowFlameHit, trigger_sparkHit
-	
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "Event") --trigger_sparkHit
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_PARTY_HITS", "Event") --trigger_sparkHit
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS", "Event") --trigger_sparkHit
+	self:RegisterCombatLog("SPELL_CAST_START", spell.wingBuffet, "WingBuffetEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", spell.shadowFlame, "ShadowFlameCastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, spell.shadowFlame, "ShadowFlameHitEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.shadowOfEbonroc, "ShadowOfEbonrocEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.shadowOfEbonroc, "ShadowOfEbonrocFadeEvent")
+	-- a spark's swings and its spell (30207) at you
+	self:RegisterCombatLog({"SWING_DAMAGE", "SWING_MISSED", "SPELL_DAMAGE", "SPELL_MISSED", "SPELL_CAST_SUCCESS"}, nil, "SparkEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_shadowOfEbonrocYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_shadowOfEbonrocOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_shadowOfEbonrocOther
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_shadowOfEbonrocFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_shadowOfEbonrocFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_shadowOfEbonrocFade
-	
-	if SUPERWOW_VERSION or SetAutoloot then
-		self:RegisterEvent("UNIT_CASTEVENT")
-	end
-	
 	self:ThrottleSync(3, syncName.wingBuffet)
 	self:ThrottleSync(3, syncName.shadowFlameCast)
 	self:ThrottleSync(3, syncName.shadowFlameHit)
@@ -196,56 +185,47 @@ function module:SparksSpawn(wave)
 	self:ScheduleEvent("EbonrocSparks", self.SparksSpawn, timer.sparksCd, self)
 end
 
-function module:Event(msg)
-	if not msg then return end
-
-	if msg == L["trigger_wingBuffet"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WingBuffetEvent(ev)
+	-- Firemaw and Flamegor cast Wing Buffet too
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.wingBuffet)
-	
-	elseif msg == L["trigger_shadowFlameCast"] then
-		self:Sync(syncName.shadowFlameCast)
-	
-	elseif string.find(msg, L["trigger_shadowFlameHit"]) then
-		self:Sync(syncName.shadowFlameHit)
-	
-	elseif msg == L["trigger_shadowOfEbonrocYou"] then
-		self:Sync(syncName.shadowOfEbonroc .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_shadowOfEbonrocOther"]) then
-		local _,_,shadowOfEbonrocPlayer,_ = string.find(msg, L["trigger_shadowOfEbonrocOther"])
-		self:Sync(syncName.shadowOfEbonroc .. " " .. shadowOfEbonrocPlayer)
-		
-	elseif string.find(msg, L["trigger_shadowOfEbonrocFade"]) then
-		local _,_,shadowOfEbonrocFadePlayer,_ = string.find(msg, L["trigger_shadowOfEbonrocFade"])
-		if shadowOfEbonrocFadePlayer == "you" then shadowOfEbonrocFadePlayer = UnitName("Player") end
-		self:Sync(syncName.shadowOfEbonrocFade .. " " .. shadowOfEbonrocFadePlayer)
-
-	elseif string.find(msg, L["trigger_sparkHit"]) then
-		local warnYou = self.db.profile.sparksyou
-		if warnYou == nil then warnYou = self.db.profile.sparks end
-		if warnYou and (string.find(msg, " hits you") or string.find(msg, " crits you") or string.find(msg, " you for ") or string.find(msg, "attacks. You")) then
-			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
-			self:WarningSign(icon.sparks, 2)
-		end
 	end
 end
 
-function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
-	if not spell then return end
-
-	if spell == spellId.shadowFlame and action == "START" then
+function module:ShadowFlameCastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.shadowFlameCast)
-		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
+	end
+end
+
+function module:ShadowFlameHitEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.shadowFlameHit)
+	end
+end
+
+function module:ShadowOfEbonrocEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.shadowOfEbonroc .. " " .. ev.destName)
+	end
+end
+
+function module:ShadowOfEbonrocFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.shadowOfEbonrocFade .. " " .. ev.destName)
+	end
+end
+
+function module:SparkEvent(ev)
+	if ev.sourceName ~= L["trigger_sparkHit"] or not ev.destGUID or ev.destGUID ~= UnitGUID("player") then
 		return
-	elseif spell == spellId.sparkSpell then
-		local playerGuid = UnitGUID("player")
-		local warnYou = self.db.profile.sparksyou
-		if warnYou == nil then warnYou = self.db.profile.sparks end
-		if warnYou and target and (target == playerGuid or target == UnitName("player") or UnitIsUnit(target, "player")) then
-			self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
-			self:WarningSign(icon.sparks, 2)
-		end
-		return
+	end
+	local warnYou = self.db.profile.sparksyou
+	if warnYou == nil then warnYou = self.db.profile.sparks end
+	if warnYou then
+		self:Message(L["msg_sparksYou"], "Personal", true, "Alarm")
+		self:WarningSign(icon.sparks, 2)
 	end
 end
 

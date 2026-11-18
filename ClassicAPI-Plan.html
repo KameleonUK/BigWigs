@@ -517,8 +517,8 @@ C_Timer.NewTimer               hooksecurefunc        InterfaceOptions_AddCategor
 <div class="batch"><h3>Batch 2: auras, GUIDs, proximity</h3><div class="ids">O6 (B4) · O5 · O10 · O14 · O7</div><p>Core helpers that the later batches use.</p></div>
 <div class="batch"><h3>Batch 2a: spoken warnings</h3><div class="ids">O18</div><p>Independent of ClassicAPI apart from the sound channel. Off by default.</p></div>
 <div class="batch"><h3>Batch 3: library clean-up</h3><div class="ids">O8 · O9 · remove the SpellStatus family, Babble-Spell, SpecialEvents-Aura, RosterLib, Gratuity</div><p><strong>Built, awaiting test.</strong> Core relays your own <code>UNIT_SPELLCAST_SUCCEEDED</code> casts as <code>BigWigs_PlayerCast</code>, with the target from <code>UNIT_SPELLCAST_SENT</code>. Spell names come from <code>BigWigs:SpellNameTable</code> (English names, or <code>GetSpellInfo(id)</code> on other clients). Zombie Food uses its own small combat-log handler until O1 arrives in batch 5. The raid mark text table moved into Core and is shared by RaidIcon and C’Thun’s map. Spell Requests also lost Babble-Spell. Seven libraries removed.</p></div>
-<div class="batch"><h3>Batch 4: options</h3><div class="ids">O15 · O16 · remove FuBarPlugin, Tablet, Dewdrop</div><p>Its own test pass, because it touches every settings page.</p></div>
-<div class="batch"><h3>Batch 5: combat-log boss modules</h3><div class="ids">O1 · O2 · O3 · O4 (B5) · O17 · F3 · pilots: Lucifron, Ragnaros, Ebonroc, Wyrmguards</div><p>Test in a raid or against a replay before converting more modules.</p></div>
+<div class="batch"><h3>Batch 4: options</h3><div class="ids">O15 · O16 · remove FuBarPlugin, Tablet, Dewdrop</div><p>Its own test pass, because it touches every settings page.</p><p><strong>Built, awaiting test.</strong> <code>Options.lua</code> builds the pages from <code>BigWigs.cmdtable</code> at login: a BigWigs root page, then <em>Bosses: &lt;zone&gt;</em>, <em>Plugins: &lt;plugin&gt;</em> and <em>Extras: &lt;extra&gt;</em> pages (the list sorts by name, so the prefixes keep them grouped). Each page fills in the first time it opens. <code>/bw</code> alone opens the options, and typed <code>/bw</code> commands work as before. Each anchor’s Options button opens its plugin’s page. <code>ResultWindow.lua</code> draws the version and resist check windows. FuBarPlugin, Tablet and Dewdrop removed.</p></div>
+<div class="batch"><h3>Batch 5: combat-log boss modules</h3><div class="ids">O1 · O2 · O3 · O4 (B5) · O17 · F3 · pilots: Lucifron, Ragnaros, Ebonroc, Wyrmguards</div><p>Test in a raid or against a replay before converting more modules.</p><p><strong>Built. MC verified in game on 18 November 2026</strong> (full clear: Lucifron, Ragnaros, plus the generic engage and boss death on every other MC module). <strong>BWL (Ebonroc, Wyrmguards) and Kronn awaiting test.</strong> Core has one combat-log frame: modules call <code>RegisterCombatLog(subevents, spells, handler)</code>, matching a spell by ID or, failing that, by English name; with debugging on, a name match prints the ID the server used. Boss death comes from <code>UNIT_DIED</code>, engage from the first hit between the group and a boss name (the target scan stays as a fallback), and <code>RegisterCastEventsForUnitName</code> now works on every client from the combat log, with SuperWoW’s callback arguments. Lucifron, Ragnaros and Ebonroc no longer read chat lines (Ragnaros keeps its yells); Kronn’s cast bars use <code>SPELL_CAST_START</code> (F3). Wyrmguards reads the 33001–33005 aura from any unit token or the combat log, then falls back to comparing one caster’s same spell across Wyrmguards, then to the old thresholds; each Wyrmguard gets its own bar and voice line, synced to the raid. One change from O17 above: a resist doesn’t rule a school out, because level-based partial and full resists also land on the vulnerable school; resisted damage is added back, as before. Other modules that register <code>UNIT_CASTEVENT</code> themselves (Firemaw, Flamegor, Nefarian and others) are unchanged.</p></div>
 <div class="batch"><h3>Batch 6: optional</h3><div class="ids">B6 class tokens · F6 Grizikil</div><p>Mechanical changes across many files.</p></div>
 </section>
 
@@ -553,13 +553,22 @@ C_Timer.NewTimer               hooksecurefunc        InterfaceOptions_AddCategor
   <li>Every page draws fully and scrolls; each control type changes the setting live and survives <code>/reload</code>.</li>
   <li>The minimap button keeps its old position and icon, opens the options, drags, and hides from its checkbox.</li>
   <li>Its right-click menu runs the local, sync and voice tests, and enables and disables BigWigs (the icon changes to match).</li>
-  <li>Version check and resist check windows list results.</li>
+  <li>Version check and resist check windows list results; their buttons run the queries; Escape and the X close them.</li>
+  <li><code>/bw</code> on its own opens the options; <code>/bw plugin test local</code> and other typed commands still work.</li>
+  <li>Each anchor’s Options button (Edit Layout) opens that plugin’s page.</li>
+  <li>Custom Bars page: typing <code>10 Pull</code> and pressing Enter starts a bar.</li>
 </ul>
 <h3>After batch 5</h3>
 <ul class="tight">
   <li>Each pilot boss: engage, every timer, resist messages, boss-kill message and module disable match the old module.</li>
   <li>A raid member on a different BigWigs build still receives your syncs.</li>
   <li>Wyrmguards: each marked Wyrmguard gets its own bar with the correct mark and school, whoever lands the hits, and the bar goes when that Wyrmguard dies.</li>
+  <li>Wyrmguards before the pull: targeting or mousing over one shows its bar if the server sends the aura; otherwise it appears from the first big hits.</li>
+  <li>Wyrmguards: re-marking a unit moves its bar to the new mark; with spoken warnings on, each new vulnerability speaks its mark and school.</li>
+  <li>Out of a raid: <code>/run BigWigs:GetModule("Death Talon Wyrmguard"):Test()</code> shows Skull Fire, Cross Frost (then Square), an unmarked Shadow bar, and Skull’s bar going.</li>
+  <li>Ragnaros out of a raid: <code>/run local m=BigWigs:GetModule("Ragnaros"); BigWigs:SetupModule("Ragnaros"); m:Test()</code> runs knockback, lava, Melt Weapon and the Son of Flame count.</li>
+  <li>With <code>/bw</code> debugging on, note any “matched by name, spell ID …” lines: they give the right IDs for Turtle’s spells.</li>
+  <li>Karazhan: Chess, Incantagos and Gnarlmoon cast bars still appear (they now come from the combat log).</li>
 </ul>
 </section>
 

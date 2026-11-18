@@ -3,8 +3,6 @@ assert(BigWigs, "BigWigs not found!")
 local BWL = nil
 local BZ = AceLibrary("Babble-Zone-2.2")
 local L = AceLibrary("AceLocale-2.2"):new("BigWigsVersionQuery")
-local tablet = AceLibrary("Tablet-2.0")
-local dewdrop = AceLibrary("Dewdrop-2.0")
 
 local COLOR_GREEN = "00ff00"
 local COLOR_RED = "ff0000"
@@ -179,55 +177,26 @@ end
 --      Event Handlers      --
 ------------------------------
 
+-- The version list window (was a Tablet-2.0 tooltip with a Dewdrop menu)
+local window = nil
 function BigWigsVersionQuery:UpdateTablet()
-	if not tablet:IsRegistered("BigWigs_VersionQuery") then
-		tablet:Register("BigWigs_VersionQuery",
-				"children", function()
-					tablet:SetTitle(L["Big Wigs Version Query"])
-					self:OnTooltipUpdate()
-				end,
-				"clickable", true,
-				"showTitleWhenDetached", true,
-				"showHintWhenDetached", true,
-				"cantAttach", true,
-				"menu", function()
-					dewdrop:AddLine(
-							"text", L["BigWigs"],
-							"tooltipTitle", L["BigWigs"],
-							"tooltipText", L["Runs a version query on the BigWigs core."],
-							"func", function()
-								self:QueryVersion("BigWigs")
-							end)
-					dewdrop:AddLine(
-							"text", L["Current zone"],
-							"tooltipTitle", L["Current zone"],
-							"tooltipText", L["Runs a version query on your current zone."],
-							"func", function()
-								self:QueryVersion()
-							end)
-					dewdrop:AddLine(
-							"text", L["Notify old versions"],
-							"tooltipTitle", L["Notify old versions"],
-							"tooltipText", L["List people with old versions to raid chat."],
-							"func", function()
-								self:NotifyOldVersions()
-							end)
-					dewdrop:AddLine(
-							"text", L["Close window"],
-							"tooltipTitle", L["Close window"],
-							"tooltipText", L["Closes the version query window."],
-							"func", function()
-								tablet:Attach("BigWigs_VersionQuery");
-								dewdrop:Close()
-							end)
-				end
-		)
+	if not window then
+		window = BigWigs:NewResultWindow(L["Big Wigs Version Query"], {
+			{ text = L["BigWigs"], tooltip = L["Runs a version query on the BigWigs core."], func = function()
+				BigWigsVersionQuery:QueryVersion("BigWigs")
+			end },
+			{ text = L["Current zone"], tooltip = L["Runs a version query on your current zone."], func = function()
+				BigWigsVersionQuery:QueryVersion()
+			end },
+			{ text = L["Notify old versions"], tooltip = L["List people with old versions to raid chat."], func = function()
+				BigWigsVersionQuery:NotifyOldVersions()
+			end },
+		})
 	end
-	if tablet:IsAttached("BigWigs_VersionQuery") then
-		tablet:Detach("BigWigs_VersionQuery")
-	else
-		tablet:Refresh("BigWigs_VersionQuery")
-	end
+	window:Clear()
+	self:OnTooltipUpdate(window)
+	window:Render()
+	window:Show()
 end
 
 function BigWigsVersionQuery:UpdateVersions()
@@ -301,7 +270,7 @@ function BigWigsVersionQuery:NotifyOldVersions()
 	SendChatMessage(L["Download newest version from [website]"], "RAID")
 end
 
-function BigWigsVersionQuery:OnTooltipUpdate()
+function BigWigsVersionQuery:OnTooltipUpdate(tablet)
 	local zoneCat = tablet:AddCategory(
 			"columns", 1,
 			"text", L["Zone"],

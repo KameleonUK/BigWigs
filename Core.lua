@@ -1079,46 +1079,400 @@ function BigWigs.modulePrototype:Test()
 	BigWigs:Print("No tests defined for module " .. self:ToString())
 end
 
-if SUPERWOW_STRING or SetAutoloot then
-	local testGuids = {
-		["0xF13000F1F3276A33"] = "Keeper Gnarlmoon",
-	}
+------------------------------
+--   Combat log dispatcher  --
+------------------------------
+-- One COMBAT_LOG_EVENT_UNFILTERED frame for every boss module, in place of matching English chat
+-- lines. A module registers what it wants, usually in OnEnable:
+--   self:RegisterCombatLog(subevents, spells, handler)
+-- subevents: a subevent name, or a list of them ("SPELL_AURA_APPLIED", {"SWING_DAMAGE", "SWING_MISSED"}).
+-- spells: nil for every event of those subevents, or a spell ID, an English spell name, or a list
+--   of both. An event matches by ID first, then by name, so a missing or wrong ID still works on an
+--   English client; other clients need the right ID. With debugging on, a match by name prints the
+--   ID the server used, so IDs can be collected from a raid.
+-- handler: a method name or a function, called as handler(self, ev) while the module is active.
+--   A module has one handler per subevent and spell.
+-- ev is one table, reused for every event: read it in the handler, don't keep it. Its fields are
+-- named as in CombatLogGetCurrentEventInfo (sourceName, destGUID, spellId, amount, missType...).
 
-	function BigWigs.modulePrototype:RegisterUnitCastEvent()
-		if not self:IsEventRegistered("UNIT_CASTEVENT") then
-			self:RegisterEvent("UNIT_CASTEVENT", function(casterGuid, targetGuid, eventType, spellId, castTime)
-				if self.castEventUnits then
-					local unitName = UnitName(casterGuid)
+local combatLogListeners = {} -- [subevent][spell ID, spell name or "*"] = { [module] = handler }
+local combatLogCore = {}      -- [subevent] = function(), the core's own uses below
+local ev = {}
+local evFields = {
+	"timestamp", "subevent", "hideCaster", "sourceGUID", "sourceName", "sourceFlags", "sourceRaidFlags",
+	"destGUID", "destName", "destFlags", "destRaidFlags", "spellId", "spellName", "spellSchool",
+	"environmentalType", "amount", "overkill", "school", "resisted", "blocked", "absorbed", "critical",
+	"glancing", "crushing", "isOffHand", "missType", "amountMissed", "overhealing", "auraType",
+	"extraSpellId", "extraSpellName", "extraSchool", "itemId", "itemName", "failedType", "powerType",
+	"extraAmount",
+}
+local numEvFields = table.getn(evFields)
 
-					if not unitName or unitName == "Unknown" then
-						if testGuids[casterGuid] then
-							unitName = testGuids[casterGuid]
-						end
-					end
+-- where each subevent's own values start, and what they are; worked out once per subevent
+local layouts = {}
+local function Layout(sub)
+	local l = layouts[sub]
+	if l then
+		return l
+	end
+	local prefix = 0
+	if string.find(sub, "^ENVIRONMENTAL_") then
+		prefix = 1
+	elseif string.find(sub, "^SPELL_") or string.find(sub, "^RANGE_") or string.find(sub, "^DAMAGE_SHIELD") or sub == "DAMAGE_SPLIT" then
+		prefix = 3
+	end
+	local suffix
+	if string.find(sub, "_DURABILITY_DAMAGE$") then
+		suffix = "durability"
+	elseif string.find(sub, "_DAMAGE$") or sub == "DAMAGE_SHIELD" or sub == "DAMAGE_SPLIT" then
+		suffix = "damage"
+	elseif string.find(sub, "_MISSED$") then
+		suffix = "missed"
+	elseif string.find(sub, "_HEAL$") then
+		suffix = "heal"
+	elseif string.find(sub, "_DOSE$") then
+		suffix = "dose"
+	elseif string.find(sub, "_AURA_APPLIED$") or string.find(sub, "_AURA_REMOVED$") or string.find(sub, "_AURA_REFRESH$") then
+		suffix = "aura"
+	elseif string.find(sub, "_INTERRUPT$") or string.find(sub, "_DISPEL_FAILED$") or string.find(sub, "_DISPEL$") then
+		suffix = "extra"
+	elseif string.find(sub, "_CAST_FAILED$") then
+		suffix = "failed"
+	elseif string.find(sub, "_ENERGIZE$") or string.find(sub, "_DRAIN$") or string.find(sub, "_LEECH$") or string.find(sub, "_EXTRA_ATTACKS$") then
+		suffix = "power"
+	end
+	l = { prefix, suffix }
+	layouts[sub] = l
+	return l
+end
 
-					if unitName and self.castEventUnits[unitName] then
-						local callback = self.castEventUnits[unitName]
-						if type(callback) == "function" then
-							callback(self, casterGuid, targetGuid, eventType, spellId, castTime)
-						elseif type(callback) == "string" and type(self[callback]) == "function" then
-							self[callback](self, casterGuid, targetGuid, eventType, spellId, castTime)
-						else
-							DEFAULT_CHAT_FRAME:AddMessage("Invalid callback for unit " .. unitName)
-							self.castEventUnits[unitName] = nil
-						end
-					end
-				end
-			end)
+local function SetSuffix(kind, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+	if kind == "damage" then
+		ev.amount, ev.overkill, ev.school, ev.resisted, ev.blocked = a1, a2, a3, a4, a5
+		ev.absorbed, ev.critical, ev.glancing, ev.crushing, ev.isOffHand = a6, a7, a8, a9, a10
+	elseif kind == "missed" then
+		ev.missType, ev.isOffHand, ev.amountMissed = a1, a2, a3
+	elseif kind == "heal" then
+		ev.amount, ev.overhealing, ev.absorbed, ev.critical = a1, a2, a3, a4
+	elseif kind == "aura" then
+		ev.auraType = a1
+	elseif kind == "dose" then
+		ev.auraType, ev.amount = a1, a2
+	elseif kind == "extra" then
+		ev.extraSpellId, ev.extraSpellName, ev.extraSchool, ev.auraType = a1, a2, a3, a4
+	elseif kind == "durability" then
+		ev.itemId, ev.itemName = a1, a2
+	elseif kind == "failed" then
+		ev.failedType = a1
+	elseif kind == "power" then
+		ev.amount, ev.powerType, ev.extraAmount = a1, a2, a3
+	end
+end
+
+local function Fill(timestamp, sub, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
+		destGUID, destName, destFlags, destRaidFlags, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13)
+	for i = 1, numEvFields do
+		ev[evFields[i]] = nil
+	end
+	ev.timestamp, ev.subevent, ev.hideCaster = timestamp, sub, hideCaster
+	ev.sourceGUID, ev.sourceName, ev.sourceFlags, ev.sourceRaidFlags = sourceGUID, sourceName, sourceFlags, sourceRaidFlags
+	ev.destGUID, ev.destName, ev.destFlags, ev.destRaidFlags = destGUID, destName, destFlags, destRaidFlags
+	local l = Layout(sub)
+	if l[1] == 3 then
+		ev.spellId, ev.spellName, ev.spellSchool = p1, p2, p3
+		SetSuffix(l[2], p4, p5, p6, p7, p8, p9, p10, p11, p12, p13)
+	elseif l[1] == 1 then
+		ev.environmentalType = p1
+		SetSuffix(l[2], p2, p3, p4, p5, p6, p7, p8, p9, p10, p11)
+	else
+		SetSuffix(l[2], p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)
+	end
+end
+
+local function CallSafely(f, a, b)
+	local ok, err = pcall(f, a, b)
+	if not ok then
+		geterrorhandler()(err)
+	end
+end
+
+local function CallListeners(set, skipA, skipB, byName)
+	for module, handler in pairs(set) do
+		if (not skipA or skipA[module] ~= handler) and (not skipB or skipB[module] ~= handler)
+				and BigWigs:IsModuleActive(module) then
+			if byName then
+				module:DebugMessage("combat log: " .. tostring(ev.spellName) .. " matched by name, spell ID " .. tostring(ev.spellId))
+			end
+			if type(handler) == "string" then
+				CallSafely(module[handler], module, ev)
+			else
+				CallSafely(handler, module, ev)
+			end
 		end
 	end
+end
+
+local function Dispatch(bySub)
+	local byId = ev.spellId and bySub[ev.spellId]
+	local byName = ev.spellName and bySub[ev.spellName]
+	local all = bySub["*"]
+	if byId then
+		CallListeners(byId)
+	end
+	if byName then
+		CallListeners(byName, byId, nil, true)
+	end
+	if all then
+		CallListeners(all, byId, byName)
+	end
+end
+
+do
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	frame:SetScript("OnEvent", function()
+		local sub = arg2
+		local bySub = combatLogListeners[sub]
+		local core = combatLogCore[sub]
+		if not bySub and not core then
+			return
+		end
+		Fill(CombatLogGetCurrentEventInfo())
+		if core then
+			CallSafely(core)
+		end
+		if bySub then
+			Dispatch(bySub)
+		end
+	end)
+end
+
+local function AsList(v)
+	if type(v) == "table" then
+		return v
+	end
+	return { v }
+end
+
+function BigWigs.modulePrototype:RegisterCombatLog(subevents, spells, handler)
+	local keys = spells and AsList(spells) or { "*" }
+	for _, sub in ipairs(AsList(subevents)) do
+		local bySub = combatLogListeners[sub]
+		if not bySub then
+			bySub = {}
+			combatLogListeners[sub] = bySub
+		end
+		for _, key in ipairs(keys) do
+			if not bySub[key] then
+				bySub[key] = {}
+			end
+			bySub[key][self] = handler
+		end
+	end
+end
+
+-- The raid mark (1 star ... 8 skull) from a sourceRaidFlags or destRaidFlags value, or nil.
+function BigWigs:RaidFlagsToMark(flags)
+	if not flags or flags == 0 then
+		return nil
+	end
+	local bit = 1
+	for i = 1, 8 do
+		if math.mod(math.floor(flags / bit), 2) == 1 then
+			return i
+		end
+		bit = bit * 2
+	end
+	return nil
+end
+
+-- True when the flags are a player, pet or guardian in your group (you included).
+local groupMemberMask = COMBATLOG_OBJECT_AFFILIATION_MINE + COMBATLOG_OBJECT_AFFILIATION_PARTY + COMBATLOG_OBJECT_AFFILIATION_RAID
+	+ COMBATLOG_OBJECT_REACTION_FRIENDLY + COMBATLOG_OBJECT_REACTION_NEUTRAL + COMBATLOG_OBJECT_REACTION_HOSTILE
+	+ COMBATLOG_OBJECT_CONTROL_PLAYER + COMBATLOG_OBJECT_CONTROL_NPC
+	+ COMBATLOG_OBJECT_TYPE_PLAYER + COMBATLOG_OBJECT_TYPE_PET + COMBATLOG_OBJECT_TYPE_GUARDIAN
+function BigWigs:IsGroupMember(flags)
+	return flags and CombatLog_Object_IsA(flags, groupMemberMask) and true or false
+end
+
+-- Boss death from UNIT_DIED (O2), in any client language and for units that share a name. Modules
+-- converted to the combat log (module.combatLog) get it in place of the chat death line; other modules
+-- get it as well as the chat line, unless they handle CHAT_MSG_COMBAT_HOSTILE_DEATH themselves
+-- (e.g. a fight that ends only when several units have died). A module can override BossUnitDied.
+function BigWigs.modulePrototype:BossUnitDied(ev)
+	if self.combatLog or self.CHAT_MSG_COMBAT_HOSTILE_DEATH == BigWigs.modulePrototype.CHAT_MSG_COMBAT_HOSTILE_DEATH then
+		self:SendBossDeathSync()
+	end
+end
+
+combatLogCore["UNIT_DIED"] = function()
+	local name = ev.destName
+	if not name then
+		return
+	end
+	for _, module in BigWigs:IterateModules() do
+		if module.translatedName == name and module:IsBossModule() and BigWigs:IsModuleActive(module) then
+			module:BossUnitDied(ev)
+		end
+	end
+end
+
+-- Engage on the first hit between your group and a boss (O3): no polling, and it works when nobody
+-- has the boss targeted. The target scan in CheckForEngage stays as a fallback. The list of names to
+-- watch is rebuilt at most once a second. A module can opt out with module.combatLogEngage = false.
+do
+	local watch = {} -- [unit name] = { module, ... }
+	local builtAt = 0
+	local function AddWatch(name, module)
+		if type(name) ~= "string" then
+			return
+		end
+		if not watch[name] then
+			watch[name] = {}
+		end
+		table.insert(watch[name], module)
+	end
+	local function Watch()
+		local now = GetTime()
+		if now - builtAt < 1 then
+			return watch
+		end
+		builtAt = now
+		for k in pairs(watch) do
+			watch[k] = nil
+		end
+		for _, module in BigWigs:IterateModules() do
+			if module:IsBossModule() and not module.engaged and module.combatLogEngage ~= false and BigWigs:IsModuleActive(module) then
+				for _, list in ipairs({ module.enabletrigger, module.wipemobs }) do
+					if type(list) == "table" then
+						for _, name in pairs(list) do
+							AddWatch(name, module)
+						end
+					else
+						AddWatch(list, module)
+					end
+				end
+			end
+		end
+		return watch
+	end
+
+	local function Engage()
+		local w = Watch()
+		local modules
+		if ev.sourceName and w[ev.sourceName] and BigWigs:IsGroupMember(ev.destFlags) then
+			modules = w[ev.sourceName]
+		elseif ev.destName and w[ev.destName] and BigWigs:IsGroupMember(ev.sourceFlags) then
+			modules = w[ev.destName]
+		end
+		if not modules then
+			return
+		end
+		for _, module in ipairs(modules) do
+			if not module.engaged and BigWigs:IsModuleActive(module) then
+				module:DebugMessage("Combat log engage [" .. module:ToString() .. "].")
+				module:CancelScheduledEvent(module:ToString() .. "_CheckStart")
+				module:Engage()
+				module:SendEngageSync()
+			end
+		end
+		builtAt = 0
+	end
+	for _, sub in ipairs({ "SWING_DAMAGE", "SWING_MISSED", "RANGE_DAMAGE", "RANGE_MISSED", "SPELL_DAMAGE",
+			"SPELL_MISSED", "SPELL_PERIODIC_DAMAGE", "SPELL_PERIODIC_MISSED" }) do
+		combatLogCore[sub] = Engage
+	end
+end
+
+-- Cast events by unit name (O4), on every client, in place of SuperWoW's UNIT_CASTEVENT. Callbacks
+-- keep SuperWoW's arguments: (casterGuid, targetGuid, eventType, spellId, castTime), with eventType
+-- "START", "CAST", "CHANNEL" or "FAIL" and castTime in milliseconds. Differences from SuperWoW:
+-- START has no target (the combat log doesn't give one); CHANNEL needs the caster on a unit token
+-- (target, nameplate, a raid member's target...), otherwise a channel arrives as CAST; FAIL comes
+-- only from an interrupt.
+do
+	local castModules = {} -- [module] = true
+
+	local function Token(guid)
+		return guid and UnitTokenFromGUID and UnitTokenFromGUID(guid)
+	end
+
+	local function CastEvent()
+		local sub = ev.subevent
+		local casterGUID, casterName, targetGUID, eventType, spellId, castTime
+		if sub == "SPELL_INTERRUPT" then
+			casterGUID, casterName, spellId, eventType, castTime = ev.destGUID, ev.destName, ev.extraSpellId, "FAIL", 0
+		else
+			casterGUID, casterName, spellId = ev.sourceGUID, ev.sourceName, ev.spellId
+		end
+		if not casterName then
+			return
+		end
+		local any
+		for module in pairs(castModules) do
+			if module.castEventUnits and module.castEventUnits[casterName] and BigWigs:IsModuleActive(module) then
+				any = true
+				break
+			end
+		end
+		if not any then
+			return
+		end
+
+		if sub == "SPELL_CAST_START" then
+			eventType = "START"
+			local token = Token(casterGUID)
+			local startMs, endMs
+			if token then
+				local _, _, _, s, e = C_Spell.UnitCastingInfo(token)
+				startMs, endMs = s, e
+			end
+			if startMs and endMs then
+				castTime = endMs - startMs
+			else
+				local _, _, _, _, _, _, ms = GetSpellInfo(spellId)
+				castTime = ms or 0
+			end
+		elseif sub == "SPELL_CAST_SUCCESS" then
+			eventType, castTime, targetGUID = "CAST", 0, ev.destGUID
+			local token = Token(casterGUID)
+			if token then
+				local _, _, _, startMs, endMs, _, _, channelId = C_Spell.UnitChannelInfo(token)
+				if channelId == spellId then
+					eventType = "CHANNEL"
+					castTime = (startMs and endMs) and (endMs - startMs) or 0
+				end
+			end
+		end
+
+		for module in pairs(castModules) do
+			local callback = module.castEventUnits and module.castEventUnits[casterName]
+			if callback and BigWigs:IsModuleActive(module) then
+				local f = callback
+				if type(f) == "string" then
+					f = module[f]
+				end
+				if type(f) == "function" then
+					local ok, err = pcall(f, module, casterGUID, targetGUID, eventType, spellId, castTime)
+					if not ok then
+						geterrorhandler()(err)
+					end
+				else
+					DEFAULT_CHAT_FRAME:AddMessage("Invalid callback for unit " .. casterName)
+					module.castEventUnits[casterName] = nil
+				end
+			end
+		end
+	end
+	combatLogCore["SPELL_CAST_START"] = CastEvent
+	combatLogCore["SPELL_CAST_SUCCESS"] = CastEvent
+	combatLogCore["SPELL_INTERRUPT"] = CastEvent
 
 	function BigWigs.modulePrototype:RegisterCastEventsForUnitName(unitName, callback)
-		self:RegisterUnitCastEvent()
-
+		castModules[self] = true
 		if not self.castEventUnits then
 			self.castEventUnits = {}
 		end
-
 		if not self.castEventUnits[unitName] then
 			self.castEventUnits[unitName] = callback
 		end
@@ -1653,7 +2007,9 @@ function BigWigs:SetupModule(moduleName)
 		m:RegisterEvent("PLAYER_REGEN_DISABLED", "CheckForEngage") -- addition
 		m:RegisterEvent("PLAYER_REGEN_ENABLED", "CheckForWipe")
 		m:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLY_DEATH")
-		m:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") -- addition
+		if not m.combatLog then
+			m:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") -- addition; combat-log modules get UNIT_DIED
+		end
 
 		m:RegisterEvent("BigWigs_RecvSync")
 
@@ -1920,7 +2276,13 @@ do
 				sentCount = 0
 			end
 			if arg2 and arg2 ~= "" then
-				sentTargets[arg3] = arg2
+				-- the target can be a unit (party1, mouseover) when the cast named one, e.g. from
+				-- a click-cast or macro; turn it into the player's name
+				local target = arg2
+				if UnitExists(target) then
+					target = UnitName(target) or target
+				end
+				sentTargets[arg3] = target
 				sentCount = sentCount + 1
 			end
 		elseif event == "UNIT_SPELLCAST_SUCCEEDED" then

@@ -5,6 +5,7 @@ module.revision = 30085
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"curse", "doom", "mc", -1, "shock", -1, "adds", "bosskill"}
 module.wipemobs = {"Flamewaker Protector"}
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Lucifron",
@@ -107,28 +108,27 @@ local syncName = {
 	addDead = "LucifronAddDead"..module.revision,
 }
 
+-- spell IDs, with the English name as a fallback match (see RegisterCombatLog in Core.lua)
+local spell = {
+	curse = {19703, "Lucifron's Curse"},
+	doom = {19702, "Impending Doom"},
+	mc = {20604, "Dominate Mind"},
+	shock = {20603, "Shadow Shock"},
+}
+
 local addDead = 0
+local mcPlayers = {} -- players under Dominate Mind, so a death clears their bar
 
 function module:OnEnable()
-	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_curse, trigger_doom, trigger_mcYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_curse, trigger_doom, trigger_mcOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_curse, trigger_doom, trigger_mcOther
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event") --trigger_mcOther
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_mcFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_mcFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_mcFade
-	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_shadowShock
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_curse2, trigger_doom2, trigger_shadowShock
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_curse2, trigger_doom2, trigger_shadowShock, trigger_mcCast
-	
-	self:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLY_DEATH", "Event") --trigger_deadYou, trigger_deadOther
-	
-	
+	-- a cast, an affliction or a resist each mean the spell went out; the syncs are throttled
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, spell.curse, "CurseEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, spell.doom, "DoomEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, spell.shock, "ShockEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", spell.mc, "McCastEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.mc, "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.mc, "McFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
+
 	self:ThrottleSync(5, syncName.curse)
 	self:ThrottleSync(5, syncName.impendingDoom)
 	
@@ -142,13 +142,12 @@ end
 
 function module:OnSetup()
 	self.started = nil
-
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --addDead, mcFade
 end
 
 function module:OnEngage()
 	addDead = 0
-	
+	mcPlayers = {}
+
 	if self.db.profile.curse then
 		self:Bar(L["bar_curseCd"], timer.curseFirstCd, icon.curse, true, color.curse)
 	end
@@ -169,60 +168,48 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:CurseEvent(ev)
+	self:Sync(syncName.curse)
+end
 
-	if (msg == string.format(UNITDIESOTHER, "Flamewaker Protector")) then
+function module:DoomEvent(ev)
+	self:Sync(syncName.impendingDoom)
+end
+
+function module:ShockEvent(ev)
+	-- Shadow Shock is a common spell name, so only Lucifron's counts
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.shock)
+	end
+end
+
+function module:McCastEvent(ev)
+	self:Sync(syncName.mcCast)
+end
+
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
+	end
+end
+
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
+	end
+end
+
+function module:UnitDied(ev)
+	local name = ev.destName
+	if name == "Flamewaker Protector" then
 		addDead = addDead + 1
 		if addDead <= 2 then
 			self:Sync(syncName.addDead .. " " .. addDead)
 		end
-	
-	elseif string.find(msg, L["trigger_deadOther"]) then
-		local _,_, deadPerson, _ = string.find(msg, L["trigger_deadOther"])
-		if deadPerson ~= "Flamewaker Protector" and deadPerson ~= "Lucifron" then
-			self:Sync(syncName.mcFade .. " " .. deadPerson)
-		end
-	end
-end
-
-function module:Event(msg)
-	if string.find(msg, L["trigger_curse"]) or string.find(msg, L["trigger_curse2"]) then
-		self:Sync(syncName.curse)
-	
-	elseif string.find(msg, L["trigger_doom"]) or string.find(msg, L["trigger_doom2"]) then
-		self:Sync(syncName.impendingDoom)
-	
-	
-	elseif msg == L["trigger_mcCast"] then
-		self:Sync(syncName.mcCast)
-	
-	elseif msg == L["trigger_mcYou"] then
-		self:Sync(syncName.mc .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _,_, mcPerson, _ = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
-
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _,_, mcPerson, _ = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
-	
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _,_, mcFadePerson, _ = string.find(msg, L["trigger_mcFade"])
-		if mcFadePerson == "you" then mcFadePerson = UnitName("Player") end
-		self:Sync(syncName.mcFade .. " " .. mcFadePerson)
-
-	elseif msg == L["trigger_deadYou"] then
-		self:Sync(syncName.mcFade .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_deadOther"]) then
-		local _,_, mcFadePerson, _ = string.find(msg, L["trigger_deadOther"])
-		self:Sync(syncName.mcFade .. " " .. mcFadePerson)
-		
-		
-	elseif string.find(msg, L["trigger_shadowShock"]) then
-		self:Sync(syncName.shock)
+	elseif name and mcPlayers[name] then
+		-- a mind-controlled player who dies loses the aura without a fade event
+		self:Sync(syncName.mcFade .. " " .. name)
 	end
 end
 
@@ -284,7 +271,8 @@ end
 
 function module:Mc(rest)
 	self:RemoveBar(L["bar_mcCast"])
-	
+	mcPlayers[rest] = true
+
 	if IsRaidLeader() or IsRaidOfficer() then
 		for i=1,GetNumRaidMembers() do
 			if UnitName("raid"..i) == rest then
@@ -307,7 +295,8 @@ end
 
 function module:McFade(rest)
 	self:RemoveBar(rest..L["bar_mc"].. ">Click Me<")
-	
+	mcPlayers[rest] = nil
+
 	if IsRaidLeader() or IsRaidOfficer() then
 		for i=1,GetNumRaidMembers() do
 			if UnitName("raid"..i) == rest then

@@ -2,8 +2,6 @@ assert(BigWigs, "BigWigs not found!")
 
 local BWL = nil
 local L = AceLibrary("AceLocale-2.2"):new("BigWigsResistCheck")
-local tablet = AceLibrary("Tablet-2.0")
-local dewdrop = AceLibrary("Dewdrop-2.0")
 
 local RESISTANCE_TYPES = {
  [0] = "Physical",
@@ -182,54 +180,29 @@ end
 --      Event Handlers      --
 ------------------------------
 
+-- The resistance list window (was a Tablet-2.0 tooltip with a Dewdrop menu)
+local window = nil
 function BigWigsResistCheck:UpdateTablet()
- if not tablet:IsRegistered("BigWigs_ResistCheck") then
-  tablet:Register("BigWigs_ResistCheck",
-    "children", function()
-     tablet:SetTitle(L["BigWigs Resist Check"])
-     self:OnTooltipUpdate()
-    end,
-    "clickable", true,
-    "showTitleWhenDetached", true,
-    "showHintWhenDetached", true,
-    "cantAttach", true,
-    "menu", function()
-     for index, resistType in pairs(RESISTANCE_TYPES) do
-      local resistIndex = index -- Create a local copy of the index for each iteration
-      dewdrop:AddLine(
-        "text", L[resistType],
-        "tooltipTitle", L[resistType],
-        "tooltipText", L["Runs a resistance check on the raid."],
-        "func", function()
-         self:QueryResistance(resistIndex) -- Use the local copy
-        end)
-     end
-     dewdrop:AddLine(
-       "text", L["Notify low resistance"],
-       "tooltipTitle", L["Notify low resistance"],
-       "tooltipText", L["List people with resistance below threshold to raid chat."],
-       "func", function()
-        self:NotifyLowResistance()
-       end)
-     dewdrop:AddLine(
-       "text", L["Close window"],
-       "tooltipTitle", L["Close window"],
-       "tooltipText", L["Closes the resistance query window."],
-       "func", function()
-        tablet:Attach("BigWigs_ResistCheck")
-        dewdrop:Close()
-       end)
-    end
-  )
+ if not window then
+  local actions = {}
+  for index = 0, 6 do
+   local resistIndex = index
+   table.insert(actions, { text = L[RESISTANCE_TYPES[index]], tooltip = L["Runs a resistance check on the raid."], func = function()
+    BigWigsResistCheck:QueryResistance(resistIndex)
+   end })
+  end
+  table.insert(actions, { text = L["Notify low resistance"], tooltip = L["List people with resistance below threshold to raid chat."], func = function()
+   BigWigsResistCheck:NotifyLowResistance()
+  end })
+  window = BigWigs:NewResultWindow(L["BigWigs Resist Check"], actions)
  end
- if tablet:IsAttached("BigWigs_ResistCheck") then
-  tablet:Detach("BigWigs_ResistCheck")
- else
-  tablet:Refresh("BigWigs_ResistCheck")
- end
+ window:Clear()
+ self:OnTooltipUpdate(window)
+ window:Render()
+ window:Show()
 end
 
-function BigWigsResistCheck:OnTooltipUpdate()
+function BigWigsResistCheck:OnTooltipUpdate(tablet)
  local typeCat = tablet:AddCategory(
    "columns", 1,
    "text", L["Resistance Type"],

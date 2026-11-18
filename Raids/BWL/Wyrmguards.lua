@@ -5,35 +5,34 @@ module.revision = 20041
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"vulnerability", "warstomp"}
 module.trashMod = true
+module.combatLog = true -- triggers come from the combat log
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Wyrmguard",
-	
+
 	warstomp_cmd = "warstomp",
 	warstomp_name = "War Stomp Alert",
 	warstomp_desc = "Warn for War Stomp",
-	
+
 	vulnerability_cmd = "vulnerability",
 	vulnerability_name = "Vulnerability",
 	vulnerability_desc = "Warn for Vulnerability changes.",
-	
-	hit = "hits",
-	crit = "crits",
+
 	vuln_bar = "%s Vulnerability",
-	
-	warstomp_trigger = "Death Talon Wyrmguard's War Stomp",
+	noMark = "No Icon",
+	-- the voice lines match "<mark> wyrmguard" and "<school> vulnerability" (Plugins\Sound.lua)
+	msg_vuln = "%s Wyrmguard: %s Vulnerability",
+	msg_vulnNoMark = "Wyrmguard: %s Vulnerability",
+
+	warstomp_spell = "War Stomp",
 	warstomp_bar = "War Stomp CD",
-	
-	vulnerability_direct_test = "^[%w]+[%s's]* ([%w%s:]+) ([%w]+) Death Talon Wyrmguard for ([%d]+) ([%w]+) damage%.[%s%(]*([%d]*)",
-	vulnerability_dots_test = "^Death Talon Wyrmguard suffers ([%d]+) ([%w]+) damage from [%w]+[%s's]* ([%w%s:]+)%.[%s%(]*([%d]*)",
-	vulnerability_message = "Vulnerability: %s!",
-	
+
 	fire = "Fire",
 	frost = "Frost",
 	shadow = "Shadow",
 	nature = "Nature",
 	arcane = "Arcane",
-	
+
 	curseofdoom = "Curse of Doom",
 	ignite = "Ignite",
 	starfire = "Starfire",
@@ -55,8 +54,17 @@ local icon = {
 	arcane = "spell_nature_starfall",
 }
 
+local barColor = {
+	nature = "green",
+	frost = "blue",
+	fire = "red",
+	arcane = "pink",
+	shadow = "black",
+}
+
 local syncName = {
-	warstomp = "WyrmguardWarstomp"..module.revision
+	warstomp = "WyrmguardWarstomp"..module.revision,
+	vuln = "WyrmguardVuln"..module.revision, -- "<guid> <school> <mark 0-8>"
 }
 
 local raidMarkNames = {
@@ -70,199 +78,364 @@ local raidMarkNames = {
 	[8] = "Skull",
 }
 
-local vulnerability = nil
+-- combat log school bits
+local schoolByBit = {
+	[4] = "fire",
+	[8] = "nature",
+	[16] = "frost",
+	[32] = "shadow",
+	[64] = "arcane",
+}
+
+-- each Wyrmguard carries one "Double received damage" aura for its school (no icon)
+local vulnAura = {
+	[33001] = "fire",
+	[33002] = "nature",
+	[33003] = "shadow",
+	[33004] = "frost",
+	[33005] = "arcane",
+}
+
+-- A hit from the same caster with the same spell on two Wyrmguards: the vulnerable one takes double,
+-- so this ratio (well above what debuffs like Scorch or Shadow Weaving add) decides it.
+local relativeRatio = 1.6
+
+-- The old fixed thresholds, used only when there is nothing to compare: {hit, crit} for direct
+-- damage, one number for a damage-over-time tick.
+local threshold = {
+	direct = {
+		arcane = {600, 1200},
+		fire = {1300, 2600},
+		frost = {800, 1600},
+		nature = {900, 1800},
+		shadow = {1700, 3400},
+	},
+	directSpell = {
+		[L["starfire"]] = {800, 1200},
+		[L["thunderfury"]] = {800, 1200},
+	},
+	periodic = {
+		arcane = 250,
+		fire = 400,
+		nature = 300,
+		shadow = 500,
+	},
+	periodicSpell = {
+		[L["curseofdoom"]] = 3000,
+	},
+	-- Ignite's ticks follow the mage's crits, not the target
+	ignore = {
+		[L["ignite"]] = true,
+	},
+}
+
+local friendlyMask = COMBATLOG_OBJECT_AFFILIATION_MINE + COMBATLOG_OBJECT_AFFILIATION_PARTY + COMBATLOG_OBJECT_AFFILIATION_RAID
+	+ COMBATLOG_OBJECT_AFFILIATION_OUTSIDER + COMBATLOG_OBJECT_REACTION_FRIENDLY
+	+ COMBATLOG_OBJECT_CONTROL_PLAYER + COMBATLOG_OBJECT_CONTROL_NPC
+	+ COMBATLOG_OBJECT_TYPE_PLAYER + COMBATLOG_OBJECT_TYPE_PET + COMBATLOG_OBJECT_TYPE_GUARDIAN
+
+local units = {}     -- [guid] = { mark, school, shownAt, barText, dead }
+local pairHits = {}  -- ["<caster guid>:<spell id>"] = { [wyrmguard guid] = highest non-crit hit }
 local stompNumber = 1
 local deathCount = 0
 
+local function Reset()
+	units = {}
+	pairHits = {}
+end
+
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
-	self:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE", "PlayerDamageEvents")
-	self:RegisterEvent("CHAT_MSG_SPELL_PET_DAMAGE", "PlayerDamageEvents")
-	self:RegisterEvent("CHAT_MSG_SPELL_PARTY_DAMAGE", "PlayerDamageEvents")
-	self:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE", "PlayerDamageEvents")
+	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE", "RANGE_DAMAGE"}, nil, "DamageEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {33001, 33002, 33003, 33004, 33005}, "AuraEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, {L["warstomp_spell"]}, "WarStompEvent")
+
+	-- the aura, read straight from any token that shows a Wyrmguard
+	self:RegisterEvent("UNIT_AURA")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED")
+	self:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+	self:RegisterEvent("RAID_TARGET_UPDATE")
+
 	self:ThrottleSync(0.5, syncName.warstomp)
+	self:ThrottleSync(0, syncName.vuln) -- one sync per Wyrmguard; several can come at once
+	self:StartScan()
 end
 
 function module:OnSetup()
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 	stompNumber = 1
 	deathCount = 0
+	Reset()
+	self:StartScan()
 end
 
 function module:OnEngage()
-	bwWyrmguardsNatureBar = false
-	bwWyrmguardsFrostBar = false
-	bwWyrmguardsFireBar = false
-	bwWyrmguardsArcaneBar = false
-	bwWyrmguardsShadowBar = false
-	
-	vulnerability = nil
+	self:StartScan()
 end
 
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	if msg == string.format(UNITDIESOTHER, module.translatedName) then
-		deathCount = deathCount + 1
-		if deathCount >= 3 then
-			BigWigs:CheckForBossDeath(msg, self)
+------------------------------
+--      Unit tracking       --
+------------------------------
+
+local function MarkName(mark)
+	return mark and raidMarkNames[mark] or L["noMark"]
+end
+
+function module:Unit(guid)
+	local unit = units[guid]
+	if not unit then
+		unit = {}
+		units[guid] = unit
+	end
+	return unit
+end
+
+function module:BarText(unit)
+	return MarkName(unit.mark) .. " " .. string.format(L["vuln_bar"], L[unit.school])
+end
+
+function module:ShowBar(unit)
+	if unit.barText then
+		self:RemoveBar(unit.barText)
+		unit.barText = nil
+	end
+	if unit.dead or not unit.school or not self.db.profile.vulnerability then
+		return
+	end
+	local left = timer.vulnerability - (GetTime() - unit.shownAt)
+	if left > 1 then
+		unit.barText = self:BarText(unit)
+		self:Bar(unit.barText, left, icon[unit.school], true, barColor[unit.school])
+	end
+end
+
+-- the raid leader can move a mark at any time; the bar follows its unit
+function module:SetMark(unit, mark)
+	if mark == 0 then
+		mark = nil
+	end
+	if unit.mark ~= mark then
+		unit.mark = mark
+		if unit.school then
+			self:ShowBar(unit)
 		end
 	end
 end
 
-function module:CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE(msg)
+-- Found a Wyrmguard's school: tell the raid. Everyone (us too) shows it from the sync.
+function module:Decide(guid, school, mark)
+	local unit = self:Unit(guid)
+	if unit.school or unit.dead then
+		return
+	end
+	if mark and mark > 0 then
+		self:SetMark(unit, mark)
+	end
+	self:Sync(syncName.vuln .. " " .. guid .. " " .. school .. " " .. (unit.mark or 0))
+end
+
+function module:ShowVulnerability(guid, school, mark)
+	if not barColor[school] then
+		return
+	end
+	local unit = self:Unit(guid)
+	if not unit.mark and mark and mark > 0 then
+		unit.mark = mark
+	end
+	if unit.school or unit.dead then
+		return
+	end
+	unit.school = school
+	unit.shownAt = GetTime()
 	if self.db.profile.vulnerability then
-		local _, _, dmg, school, userspell, partial = string.find(msg, L["vulnerability_dots_test"])
-		if dmg and school and userspell then
-			if school == L["arcane"] then
-				if partial and partial ~= "" then
-					if tonumber(dmg)+tonumber(partial) >= 250 then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if tonumber(dmg) >= 250 then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			elseif school == L["fire"] and not string.find(userspell, L["ignite"]) then
-				if partial and partial ~= "" then
-					if tonumber(dmg)+tonumber(partial) >= 400 then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if tonumber(dmg) >= 400 then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			elseif school == L["nature"] then
-				if partial and partial ~= "" then
-					if tonumber(dmg)+tonumber(partial) >= 300 then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if tonumber(dmg) >= 300 then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			elseif school == L["shadow"] then
-				if string.find(userspell, L["curseofdoom"]) then
-					if partial and partial ~= "" then
-						if tonumber(dmg)+tonumber(partial) >= 3000 then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if tonumber(dmg) >= 3000 then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				else
-					if partial and partial ~= "" then
-						if tonumber(dmg)+tonumber(partial) >= 500 then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if tonumber(dmg) >= 500 then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				end
+		self:ShowBar(unit)
+		local text
+		if unit.mark then
+			text = string.format(L["msg_vuln"], MarkName(unit.mark), L[school])
+		else
+			text = string.format(L["msg_vulnNoMark"], L[school])
+		end
+		self:Message(text, "Attention", true)
+	end
+end
+
+------------------------------
+--      Aura detection      --
+------------------------------
+
+function module:CheckUnit(token)
+	if not UnitExists(token) or UnitName(token) ~= self.translatedName or UnitIsDead(token) then
+		return
+	end
+	local guid = UnitGUID(token)
+	if not guid then
+		return
+	end
+	local unit = self:Unit(guid)
+	-- a unit token gives its mark for certain, unmarked included
+	self:SetMark(unit, GetRaidTargetIndex(token))
+	if unit.school or not self.db.profile.vulnerability then
+		return
+	end
+	for spellId, school in pairs(vulnAura) do
+		if C_UnitAuras.GetUnitAuraBySpellID(token, spellId) then
+			self:Decide(guid, school, unit.mark)
+			return
+		end
+	end
+end
+
+function module:UNIT_AURA(unit)
+	if unit and (string.find(unit, "^mark") or string.find(unit, "^nameplate") or unit == "target" or unit == "mouseover") then
+		self:CheckUnit(unit)
+	end
+end
+
+function module:PLAYER_TARGET_CHANGED()
+	self:CheckUnit("target")
+end
+
+function module:UPDATE_MOUSEOVER_UNIT()
+	self:CheckUnit("mouseover")
+end
+
+function module:NAME_PLATE_UNIT_ADDED(unit)
+	self:CheckUnit(unit)
+end
+
+function module:RAID_TARGET_UPDATE()
+	for i = 1, 8 do
+		self:CheckUnit("mark" .. i)
+	end
+end
+
+-- catches Wyrmguards that came into view without an event we watch
+function module:Scan()
+	for i = 1, 8 do
+		self:CheckUnit("mark" .. i)
+	end
+	self:CheckUnit("target")
+	for i = 1, GetNumRaidMembers() do
+		self:CheckUnit("raid" .. i .. "target")
+	end
+end
+
+function module:StartScan()
+	if not self:IsEventScheduled("WyrmguardScan") then
+		self:ScheduleRepeatingEvent("WyrmguardScan", self.Scan, 2, self)
+	end
+end
+
+------------------------------
+--    Combat log handlers   --
+------------------------------
+-- ev is described at RegisterCombatLog in Core.lua
+
+function module:AuraEvent(ev)
+	local school = vulnAura[ev.spellId]
+	if school and ev.destGUID and ev.destName == self.translatedName and self.db.profile.vulnerability then
+		self:Decide(ev.destGUID, school, BigWigs:RaidFlagsToMark(ev.destRaidFlags))
+	end
+end
+
+-- the same caster's same spell on two Wyrmguards: returns the GUID that took double, if any
+local function Compare(key, guid, amount)
+	local hits = pairHits[key]
+	if not hits then
+		hits = {}
+		pairHits[key] = hits
+	end
+	if not hits[guid] or amount > hits[guid] then
+		hits[guid] = amount
+	end
+	local mine = hits[guid]
+	for other, theirs in pairs(hits) do
+		if other ~= guid and not (units[other] and units[other].dead) then
+			if mine >= theirs * relativeRatio then
+				return guid
+			elseif theirs >= mine * relativeRatio then
+				return other
 			end
 		end
 	end
 end
 
-function module:PlayerDamageEvents(msg)
-	if self.db.profile.vulnerability then
-		local _, _, userspell, stype, dmg, school, partial = string.find(msg, L["vulnerability_direct_test"])
-		if stype and dmg and school then
-			if school == L["arcane"] then
-				if string.find(userspell, L["starfire"]) then
-					if partial and partial ~= "" then
-						if (tonumber(dmg)+tonumber(partial) >= 800 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if (tonumber(dmg) >= 800 and stype == L["hit"]) or (tonumber(dmg) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				else
-					if partial and partial ~= "" then
-						if (tonumber(dmg)+tonumber(partial) >= 600 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if (tonumber(dmg) >= 600 and stype == L["hit"]) or (tonumber(dmg) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				end
-			elseif school == L["fire"] then
-				if partial and partial ~= "" then
-					if (tonumber(dmg)+tonumber(partial) >= 1300 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 2600 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if (tonumber(dmg) >= 1300 and stype == L["hit"]) or (tonumber(dmg) >= 2600 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			elseif school == L["frost"] then
-				if partial and partial ~= "" then
-					if (tonumber(dmg)+tonumber(partial) >= 800 and stype == L["hit"])	or (tonumber(dmg)+tonumber(partial) >= 1600 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if (tonumber(dmg) >= 800 and stype == L["hit"]) or (tonumber(dmg) >= 1600 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			elseif school == L["nature"] then
-				if string.find(userspell, L["thunderfury"]) then
-					if partial and partial ~= "" then
-						if (tonumber(dmg)+tonumber(partial) >= 800 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if (tonumber(dmg) >= 800 and stype == L["hit"]) or (tonumber(dmg) >= 1200 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				else
-					if partial and partial ~= "" then
-						if (tonumber(dmg)+tonumber(partial) >= 900 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 1800 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					else
-						if (tonumber(dmg) >= 900 and stype == L["hit"]) or (tonumber(dmg)>= 1800 and stype == L["crit"]) then
-							self:IdentifyVulnerability(school)
-						end
-					end
-				end
-			elseif school == L["shadow"] then
-				if partial and partial ~= "" then
-					if (tonumber(dmg)+tonumber(partial) >= 1700 and stype == L["hit"]) or (tonumber(dmg)+tonumber(partial) >= 3400 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				else
-					if (tonumber(dmg) >= 1700 and stype == L["hit"]) or (tonumber(dmg) >= 3400 and stype == L["crit"]) then
-						self:IdentifyVulnerability(school)
-					end
-				end
-			end
+function module:DamageEvent(ev)
+	local guid = ev.destGUID
+	if ev.destName ~= self.translatedName or not guid then
+		return
+	end
+	local unit = self:Unit(guid)
+	if ev.destRaidFlags then
+		self:SetMark(unit, BigWigs:RaidFlagsToMark(ev.destRaidFlags))
+	end
+	if unit.dead or not self.db.profile.vulnerability then
+		return
+	end
+	local school = schoolByBit[ev.school or ev.spellSchool or 0]
+	if not school or not ev.amount or not CombatLog_Object_IsA(ev.sourceFlags or 0, friendlyMask) then
+		return
+	end
+	local spellName = ev.spellName or ""
+	if threshold.ignore[spellName] then
+		return
+	end
+	-- what the hit would have done without a partial resist or an absorb
+	local total = ev.amount + (ev.resisted or 0) + (ev.absorbed or 0)
+
+	-- hits on a Wyrmguard already decided still count: they show what the others aren't weak to
+	if not ev.critical and ev.sourceGUID and ev.spellId then
+		local vulnerable = Compare(ev.sourceGUID .. ":" .. ev.spellId, guid, total)
+		if vulnerable then
+			self:Decide(vulnerable, school)
+			return
 		end
+	end
+	if unit.school then
+		return
+	end
+
+	local limit
+	if ev.subevent == "SPELL_PERIODIC_DAMAGE" then
+		limit = threshold.periodicSpell[spellName] or threshold.periodic[school]
+	else
+		local t = threshold.directSpell[spellName] or threshold.direct[school]
+		if t then
+			limit = ev.critical and t[2] or t[1]
+		end
+	end
+	if limit and total >= limit then
+		self:Decide(guid, school)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["warstomp_trigger"]) then
+function module:WarStompEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.warstomp)
 	end
 end
+
+-- UNIT_DIED for a Wyrmguard (the core calls this): its bar goes, and the pack is done after three
+function module:BossUnitDied(ev)
+	if ev.destGUID then
+		local unit = self:Unit(ev.destGUID)
+		if unit.barText then
+			self:RemoveBar(unit.barText)
+			unit.barText = nil
+		end
+		unit.dead = true
+	end
+	deathCount = deathCount + 1
+	if deathCount >= 3 then
+		self:SendBossDeathSync()
+	end
+end
+
+------------------------------
+--          Syncs           --
+------------------------------
 
 function module:BigWigs_RecvSync( sync, rest, nick )
 	if sync == syncName.warstomp and self.db.profile.warstomp then
@@ -271,39 +444,57 @@ function module:BigWigs_RecvSync( sync, rest, nick )
 		if stompNumber >= 4 then
 			stompNumber = 1
 		end
+	elseif sync == syncName.vuln and rest then
+		local _, _, guid, school, mark = string.find(rest, "^(%S+) (%a+) (%d)$")
+		if guid then
+			self:ShowVulnerability(guid, school, tonumber(mark))
+		end
 	end
 end
-			
+
 function module:WarStomp(number)
 	self:IntervalBar(L["warstomp_bar"]..number, timer.warstomp[1], timer.warstomp[2], icon.warstomp)
 end
 
-function module:IdentifyVulnerability(school)
-	if not self.db.profile.vulnerability or type(school) ~= "string" then return end
-	vulnerability = school
+------------------------------
+--          Test            --
+------------------------------
+-- /run BigWigs:GetModule("Death Talon Wyrmguard"):Test()
+-- Fake Wyrmguards: Skull is found from its aura, Cross by comparing one caster's Frostbolts (both
+-- below the old fixed threshold), and an unmarked one from a single big Shadow Bolt. Cross is then
+-- re-marked Square, and Skull dies.
 
-	local markIndex = GetRaidTargetIndex("Target")
-	local markName = raidMarkNames[markIndex] or "No Icon"
-
-	if vulnerability == "Nature" and bwWyrmguardsNatureBar == false then
-		self:Bar(markName .. " " .. format(L["vuln_bar"], school), timer.vulnerability, icon.nature, true, "green")
-		bwWyrmguardsNatureBar = true
+function module:Test()
+	BigWigs:EnableModule(self:ToString())
+	local me = UnitGUID("player") or "0xTESTPLAYER"
+	local myFlags = COMBATLOG_OBJECT_AFFILIATION_MINE + COMBATLOG_OBJECT_REACTION_FRIENDLY + COMBATLOG_OBJECT_CONTROL_PLAYER + COMBATLOG_OBJECT_TYPE_PLAYER
+	local skull, cross, plain = "0xF1300035850000A1", "0xF1300035850000A2", "0xF1300035850000A3"
+	local function Hit(guid, mark, amount, crit)
+		return {
+			subevent = "SPELL_DAMAGE", sourceGUID = me, sourceFlags = myFlags, destGUID = guid,
+			destName = module.translatedName, destRaidFlags = mark and math.pow(2, mark - 1) or 0,
+			spellId = 25304, spellName = "Frostbolt", spellSchool = 16, school = 16, amount = amount, critical = crit,
+		}
 	end
-	if vulnerability == "Frost" and bwWyrmguardsFrostBar == false then
-		self:Bar(markName .. " " .. format(L["vuln_bar"], school), timer.vulnerability, icon.frost, true, "blue")
-		bwWyrmguardsFrostBar = true
+	local steps = {
+		{ 1, function() module:AuraEvent({ spellId = 33001, destGUID = skull, destName = module.translatedName, destRaidFlags = 128 }) end },
+		{ 4, function() module:DamageEvent(Hit(skull, 8, 360)) end },
+		{ 5, function() module:DamageEvent(Hit(cross, 7, 740)) end },
+		{ 8, function()
+			local ev = Hit(plain, nil, 2000)
+			ev.spellId, ev.spellName, ev.spellSchool, ev.school = 25307, "Shadow Bolt", 32, 32
+			module:DamageEvent(ev)
+		end },
+		{ 12, function() module:SetMark(module:Unit(cross), 6) end },
+		{ 15, function() module:BossUnitDied({ destGUID = skull, destName = module.translatedName }) end },
+		{ 20, function()
+			deathCount = 0
+			module:Message("Wyrmguard test finished", "Positive", true, false)
+		end },
+	}
+	for i, step in ipairs(steps) do
+		self:ScheduleEvent("WyrmguardTest" .. i, step[2], step[1])
 	end
-	if vulnerability == "Fire" and bwWyrmguardsFireBar == false then
-		self:Bar(markName .. " " .. format(L["vuln_bar"], school), timer.vulnerability, icon.fire, true, "red")
-		bwWyrmguardsFireBar = true
-	end
-	if vulnerability == "Arcane" and bwWyrmguardsArcaneBar == false then
-		self:Bar(markName .. " " .. format(L["vuln_bar"], school), timer.vulnerability, icon.arcane, true, "pink")
-		bwWyrmguardsArcaneBar = true
-	end
-	if vulnerability == "Shadow" and bwWyrmguardsShadowBar == false then
-		self:Bar(markName .. " " .. format(L["vuln_bar"], school), timer.vulnerability, icon.shadow, true, "black")
-		bwWyrmguardsShadowBar = true
-	end
+	self:Message("Wyrmguard test started", "Positive", true, false)
+	return true
 end
-

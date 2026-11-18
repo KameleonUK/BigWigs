@@ -5,6 +5,7 @@ module.revision = 30081
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"emerge", "wrathofragnaros", "lava", "adds", "melt", "elementalfire", -1, "tankalert", "tankwrathhit", "tankwrathresist", "tankmark", "bosskill"}
 module.wipemobs = {"Son of Flame"}
+module.combatLog = true -- triggers come from the combat log (yells stay on chat); boss death from UNIT_DIED
 module.defaultDB = {
 	adds = false,
 	elementalfire = false,
@@ -164,6 +165,12 @@ local syncName = {
 	tankWrathResist = "RagnarosTankWrathResist"..module.revision,
 }
 
+-- spell IDs, with the English name as a fallback match (see RegisterCombatLog in Core.lua)
+local spell = {
+	wrath = {20566, "Wrath of Ragnaros"},
+	elementalFire = {20564, "Elemental Fire"},
+}
+
 local addDead = 0
 
 local melt1 = nil
@@ -190,26 +197,14 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_domoStart1, 2, 3, 4, 5, trigger_engage
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS", "Event") --trigger_lavaYou
-
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "SpellHitEvent") --trigger_meltWeapon, trigger_wrathHit, trigger_wrathResistYou
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "SpellHitEvent") --trigger_wrathHit, trigger_wrathResist
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "SpellHitEvent") --trigger_wrathHit, trigger_wrathResist
-
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_elementalFireYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_elementalFireOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_elementalFireOther
-
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_elementalFireFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_elementalFireFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_elementalFireFade
-
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "MeleeHitEvent")
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES", "MeleeHitEvent")
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_PARTY_HITS", "MeleeHitEvent")
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_PARTY_MISSES", "MeleeHitEvent")
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS", "MeleeHitEvent") --non-party raid members
-	self:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_MISSES", "MeleeHitEvent") --non-party raid members
+	self:RegisterCombatLog("ENVIRONMENTAL_DAMAGE", nil, "LavaEvent")
+	self:RegisterCombatLog("SPELL_DURABILITY_DAMAGE", nil, "MeltEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", spell.wrath, "WrathHitEvent")
+	self:RegisterCombatLog("SPELL_MISSED", spell.wrath, "WrathMissEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.elementalFire, "ElementalFireEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.elementalFire, "ElementalFireFadeEvent")
+	self:RegisterCombatLog({"SWING_DAMAGE", "SWING_MISSED"}, nil, "MeleeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
 
 	self:ThrottleSync(5, syncName.knockback)
@@ -225,8 +220,6 @@ end
 
 function module:OnSetup()
 	self.started = nil
-	
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -262,14 +255,68 @@ function module:MINIMAP_ZONE_CHANGED(msg)
 	self.core:EnableModule(module.translatedName)
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local function IsMe(guid)
+	return guid and guid == UnitGUID("player")
+end
 
-	if (msg == string.format(UNITDIESOTHER, "Son of Flame")) then
+function module:UnitDied(ev)
+	local name = ev.destName
+	if name == "Son of Flame" then
 		addDead = addDead + 1
 		if addDead <= 10 then
 			self:Sync(syncName.addDead .. " " .. addDead)
 		end
+	elseif name and BigWigs:IsGroupMember(ev.destFlags) then
+		-- remove Elemental Fire bar when a player dies
+		self:ElementalFireFade(name)
+		-- clear mark and variable if tank dies
+		if name == knownTank then
+			self:ClearKnownTank()
+		end
+	end
+end
+
+function module:LavaEvent(ev)
+	if ev.environmentalType == "LAVA" and IsMe(ev.destGUID) and self.db.profile.lava then
+		self:LavaYou()
+	end
+end
+
+function module:MeltEvent(ev)
+	if ev.sourceName == self.translatedName and IsMe(ev.destGUID) and ev.itemName and self.db.profile.melt then
+		self:MeltWeapon(ev.itemName)
+	end
+end
+
+function module:ElementalFireEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.elementalFire .. " " .. ev.destName)
+	end
+end
+
+function module:ElementalFireFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.elementalFireFade .. " " .. ev.destName)
+	end
+end
+
+function module:WrathHitEvent(ev)
+	if ev.destName and ev.destName == knownTank then
+		self:Sync(syncName.tankWrathHit .. " " .. ev.destName)
+	end
+end
+
+function module:WrathMissEvent(ev)
+	if ev.missType == "RESIST" and ev.destName and ev.destName == knownTank then
+		self:Sync(syncName.tankWrathResist .. " " .. ev.destName)
+	end
+end
+
+-- whoever Ragnaros swings at (hit, crit, miss, dodge or parry) is the tank
+function module:MeleeEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destName and ev.destName ~= knownTank then
+		self:Sync(syncName.newTank .. " " .. ev.destName)
 	end
 end
 
@@ -311,77 +358,6 @@ function module:TrueEngage()
 		end
 	end
 end
-
-function module:Event(msg)
-	if string.find(msg, L["trigger_lavaYou"]) and self.db.profile.lava then
-		self:LavaYou()
-
-	elseif msg == L["trigger_elementalFireYou"] then
-		local elementalFirePerson = UnitName("Player")
-		self:Sync(syncName.elementalFire .. " " .. elementalFirePerson)
-
-	elseif string.find(msg, L["trigger_elementalFireOther"]) then
-		local _,_, elementalFirePerson, _ = string.find(msg, L["trigger_elementalFireOther"])
-		self:Sync(syncName.elementalFire .. " " .. elementalFirePerson)
-
-	elseif string.find(msg, L["trigger_elementalFireFade"]) then
-		local _,_, elementalFireFadePerson, _ = string.find(msg, L["trigger_elementalFireFade"])
-		if elementalFireFadePerson == "you" then elementalFireFadePerson = UnitName("Player") end
-		self:Sync(syncName.elementalFireFade .. " " .. elementalFireFadePerson)
-	end
-end
-
-
-function module:SpellHitEvent(msg)
-	if string.find(msg, L["trigger_meltWeapon"]) and self.db.profile.melt then
-		local _,_, meltWeapon, _ = string.find(msg, L["trigger_meltWeapon"])
-		self:MeltWeapon(meltWeapon)
-		return
-	end
-
-	local _,_, wrathHitPerson = string.find(msg, L["trigger_wrathHit"])
-	if wrathHitPerson then
-		if wrathHitPerson == "you" then wrathHitPerson = UnitName("Player") end
-		if wrathHitPerson == knownTank then
-			self:Sync(syncName.tankWrathHit .. " " .. wrathHitPerson)
-		end
-		return
-	end
-
-	local _,_, wrathResistPerson = string.find(msg, L["trigger_wrathResist"])
-	if wrathResistPerson and wrathResistPerson == knownTank then
-		self:Sync(syncName.tankWrathResist .. " " .. wrathResistPerson)
-		return
-	end
-
-	if string.find(msg, L["trigger_wrathResistYou"]) and knownTank == UnitName("Player") then
-		self:Sync(syncName.tankWrathResist .. " " .. UnitName("Player"))
-		return
-	end
-end
-
-
-function module:MeleeHitEvent(msg)
-	local victim = "none"
-
-	local _,_, player = string.find(msg, L["trigger_hitCrit"])
-	victim = player or victim
-
-	local _,_, player = string.find(msg, L["trigger_miss"])
-	victim = player or victim
-
-	local _,_, player = string.find(msg, L["trigger_dodgeParry"])
-	victim = player or victim
-
-	if victim ~= "none" then
-		if string.lower(victim) == "you" then victim = UnitName("Player") end
-
-		if victim ~= knownTank then
-			self:Sync(syncName.newTank .. " " .. victim)
-		end
-	end
-end
-
 
 function module:BigWigs_RecvSync(sync, rest, nick)
 	if sync == syncName.knockback and self.db.profile.wrathofragnaros then
@@ -593,21 +569,6 @@ function module:ElementalFireFade(player)
 	self:RemoveBar(string.format(L["bar_elementalFire"], player))
 end
 
-function module:OnFriendlyDeath(msg)
-	local _, _, player = string.find(msg, "(.+) die")
-	if player then
-		if player == "You" then player = UnitName("player") end
-
-		-- remove Elemental Fire bar when a player dies
-		self:ElementalFireFade(player)
-
-		-- clear mark and variable if tank dies
-		if player == knownTank then
-			self:ClearKnownTank()
-		end
-	end
-end
-
 function module:NewTank(newTank)
 	-- sanity check in case remote player has a different knownTank
 	if newTank == knownTank then return end
@@ -677,21 +638,18 @@ function module:Test()
 
 		-- Lava test
 		{ time = 5, func = function()
-			local msg = "You lose 500 health for swimming in lava."
-			print("Test: Lava - " .. msg)
-			module:Event(msg)
+			print("Test: Lava")
+			module:LavaEvent({ environmentalType = "LAVA", destGUID = UnitGUID("player") })
 		end },
 
 		-- Melt Weapon test
 		{ time = 8, func = function()
-			local msg = "Ragnaros casts Melt Weapon on you: Thunderfury damaged."
-			print("Test: Melt Weapon - " .. msg)
-			module:Event(msg)
+			print("Test: Melt Weapon - Thunderfury")
+			module:MeltEvent({ sourceName = module.translatedName, destGUID = UnitGUID("player"), itemName = "Thunderfury" })
 		end },
 		{ time = 9, func = function()
-			local msg = "Ragnaros casts Melt Weapon on you: Thunderfury damaged."
-			print("Test: Melt Weapon (2nd hit) - " .. msg)
-			module:Event(msg)
+			print("Test: Melt Weapon (2nd hit) - Thunderfury")
+			module:MeltEvent({ sourceName = module.translatedName, destGUID = UnitGUID("player"), itemName = "Thunderfury" })
 		end },
 
 		-- Second knockback
@@ -710,14 +668,12 @@ function module:Test()
 
 		-- Son of Flame deaths
 		{ time = 18, func = function()
-			local msg = string.format(UNITDIESOTHER, "Son of Flame")
-			print("Test: Son of Flame dies (1) - " .. msg)
-			module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
+			print("Test: Son of Flame dies (1)")
+			module:UnitDied({ destName = "Son of Flame" })
 		end },
 		{ time = 19, func = function()
-			local msg = string.format(UNITDIESOTHER, "Son of Flame")
-			print("Test: Son of Flame dies (2) - " .. msg)
-			module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
+			print("Test: Son of Flame dies (2)")
+			module:UnitDied({ destName = "Son of Flame" })
 		end },
 
 		-- Emerge test (simulate via sync)
