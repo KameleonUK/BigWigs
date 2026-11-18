@@ -1248,7 +1248,7 @@ function BigWigsBars:SetupFrames(emphasize)
 
 	local f, t
 
-	f, _, _ = GameFontNormal:GetFont()
+	f = GameFontNormal:GetFont()
 
 	local frame = CreateFrame("Frame", emphasize and "BigWigsEmphasizedBarAnchor" or "BigWigsBarAnchor", UIParent)
 
@@ -1319,7 +1319,7 @@ function BigWigsBars:SetupFrames(emphasize)
 	t:SetAllPoints(leftbutton)
 	t:SetBlendMode("ADD")
 	leftbutton:SetHighlightTexture(t)
-	leftbuttontext = leftbutton:CreateFontString(nil, "OVERLAY")
+	local leftbuttontext = leftbutton:CreateFontString(nil, "OVERLAY")
 	leftbuttontext:SetFontObject(GameFontHighlight)
 	leftbuttontext:SetText(L["Test"])
 	leftbuttontext:SetAllPoints(leftbutton)
@@ -1354,7 +1354,7 @@ function BigWigsBars:SetupFrames(emphasize)
 	t:SetAllPoints(middlebutton)
 	t:SetBlendMode("ADD")
 	middlebutton:SetHighlightTexture(t)
-	middlebuttontext = middlebutton:CreateFontString(nil, "OVERLAY")
+	local middlebuttontext = middlebutton:CreateFontString(nil, "OVERLAY")
 	middlebuttontext:SetFontObject(GameFontHighlight)
 	middlebuttontext:SetText("Edit")
 	middlebuttontext:SetAllPoints(middlebutton)
@@ -1389,7 +1389,7 @@ function BigWigsBars:SetupFrames(emphasize)
 	t:SetAllPoints(rightbutton)
 	t:SetBlendMode("ADD")
 	rightbutton:SetHighlightTexture(t)
-	rightbuttontext = rightbutton:CreateFontString(nil, "OVERLAY")
+	local rightbuttontext = rightbutton:CreateFontString(nil, "OVERLAY")
 	rightbuttontext:SetFontObject(GameFontHighlight)
 	rightbuttontext:SetText(L["Close"])
 	rightbuttontext:SetAllPoints(rightbutton)
@@ -1489,16 +1489,25 @@ function BigWigsBars:SavePosition()
 end
 
 function BigWigsBars:RestorePosition()
-	local x = self.db.profile.posx
-	local y = self.db.profile.posy
-
-	if not x or not y then
+	if not self.frames then
 		return
 	end
 
+	local x = self.db.profile.posx
+	local y = self.db.profile.posy
 	local f = self.frames.anchor
-	local s = f:GetEffectiveScale()
+	if x and y and f then
+		local s = f:GetEffectiveScale()
+		f:ClearAllPoints()
+		f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	end
 
-	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	x = self.db.profile.emphasizePosX
+	y = self.db.profile.emphasizePosY
+	f = self.frames.emphasizeAnchor
+	if x and y and f then
+		local s = f:GetEffectiveScale()
+		f:ClearAllPoints()
+		f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	end
 end

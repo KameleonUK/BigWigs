@@ -173,7 +173,7 @@ local function ResolvePlayerName(guidOrName)
 		if numRaid and numRaid > 0 then
 			for i = 1, numRaid do
 				local unit = "raid" .. i
-				local _, uGuid = UnitExists(unit)
+				local uGuid = UnitGUID(unit)
 				if uGuid == guidOrName then
 					return UnitName(unit)
 				end
@@ -184,14 +184,14 @@ local function ResolvePlayerName(guidOrName)
 		if numParty and numParty > 0 then
 			for i = 1, numParty do
 				local unit = "party" .. i
-				local _, uGuid = UnitExists(unit)
+				local uGuid = UnitGUID(unit)
 				if uGuid == guidOrName then
 					return UnitName(unit)
 				end
 			end
 		end
 		-- Check player
-		local _, pGuid = UnitExists("player")
+		local pGuid = UnitGUID("player")
 		if pGuid == guidOrName then
 			return UnitName("player")
 		end

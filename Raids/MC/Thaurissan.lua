@@ -194,17 +194,8 @@ function module:DetonationCast()
 end
 
 function module:GetBossUnit()
-	-- resolve the boss unit id by scanning the player's and raid's targets
-	if UnitExists("Target") and UnitName("Target") == module.translatedName then
-		return "Target"
-	end
-	for i = 1, GetNumRaidMembers() do
-		local unit = "raid" .. i .. "Target"
-		if UnitExists(unit) and UnitName(unit) == module.translatedName then
-			return unit
-		end
-	end
-	return nil
+	-- also finds the boss by nameplate or raid mark when nobody targets him
+	return BigWigs:FindUnitByName(module.translatedName)
 end
 
 function module:CheckHealth()

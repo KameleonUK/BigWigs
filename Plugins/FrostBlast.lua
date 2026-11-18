@@ -479,15 +479,23 @@ function BigWigsFrostBlast:SetupFrames()
 
 	anchor = frame
 
-	local x = self.db.profile.posx
-	local y = self.db.profile.posy
-	if x and y then
-		local s = anchor:GetEffectiveScale()
-		anchor:ClearAllPoints()
-		anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
-	else
+	if not self:RestorePosition() then
 		self:ResetAnchor()
 	end
+end
+
+-- Places the anchor at its saved position; returns nil when there is none to restore.
+-- Also called by the core on UI_SCALE_CHANGED.
+function BigWigsFrostBlast:RestorePosition()
+	local x = self.db.profile.posx
+	local y = self.db.profile.posy
+	if not x or not y or not anchor then
+		return
+	end
+	local s = anchor:GetEffectiveScale()
+	anchor:ClearAllPoints()
+	anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	return true
 end
 
 function BigWigsFrostBlast:ResetAnchor()

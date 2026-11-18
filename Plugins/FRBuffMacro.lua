@@ -1,35 +1,33 @@
-local frBuffTooltip = CreateFrame( "GameTooltip", "frBuffTooltip", nil, "GameTooltipTemplate" );
-frBuffTooltip:Hide()
-frBuffTooltip:SetFrameStrata("TOOLTIP")
-frBuffTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
-
+-- Reads buff names from ClassicAPI's aura data instead of scanning a hidden tooltip, and keeps the
+-- old behaviour of matching any buff whose name contains the text (case-insensitive).
 local function FR_FindBuff(obuff, unit)
-	local buff=strlower(obuff);
-	local tooltip=frBuffTooltip;
-	local textleft1=getglobal(tooltip:GetName().."TextLeft1");
-	if ( not unit ) then
-		unit ='player';
+	local buff = strlower(obuff)
+	if not unit then
+		unit = 'player'
 	end
 
-	for i=1, 16 do
-		tooltip:SetOwner(UIParent, "ANCHOR_NONE");
-		tooltip:SetUnitBuff(unit, i);
-		b = textleft1:GetText();
-		tooltip:Hide();
-		if ( b and strfind(strlower(b), buff) ) then
-			return "buff", i, b;
-		elseif ( b==nil ) then
-			break;
+	local i = 1
+	local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+	while aura do
+		if aura.name and strfind(strlower(aura.name), buff, 1, true) then
+			return "buff", i, aura.name
 		end
+		i = i + 1
+		aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
 	end
-	tooltip:Hide();
+end
+
+-- 28 yards, the range CheckInteractDistance(unit, 4) used to test
+local function InRange(unit)
+	local distSq, checked = UnitDistanceSquared(unit)
+	return checked and distSq <= 28 * 28
 end
 
 local function BuffFireResist()
 	for i=1, GetNumRaidMembers() do
 		if UnitExists("raidpet"..i) then
 			if not FR_FindBuff("Resist Fire","raidpet"..i) and not FR_FindBuff("phase shift","raidpet"..i) then
-				if CheckInteractDistance("raidpet"..i, 4) then
+				if InRange("raidpet"..i) then
 					TargetUnit("raidpet"..i)
 					CastPetAction(3)
 					return
@@ -40,7 +38,7 @@ local function BuffFireResist()
 
 	for i=1, GetNumRaidMembers() do
 		if not FR_FindBuff("Resist Fire", "raid"..i) then
-			if CheckInteractDistance("raid"..i, 4) then
+			if InRange("raid"..i) then
 				TargetUnit("raid"..i)
 				CastPetAction(3)
 				return

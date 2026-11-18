@@ -71,9 +71,7 @@ L:RegisterTranslations("enUS", function()
  }
 end)
 
-module.proximityCheck = function(unit)
- return CheckInteractDistance(unit, 2)
-end
+module.proximityRange = 11 -- yards, checked with UnitDistanceSquared by the Proximity plugin
 module.proximitySilent = true
 
 module:RegisterYellEngage(L.trigger_engage)

@@ -238,7 +238,7 @@ function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
 		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
 		return
 	elseif spell == spellId.sparkSpell then
-		local _, playerGuid = UnitExists("player")
+		local playerGuid = UnitGUID("player")
 		local warnYou = self.db.profile.sparksyou
 		if warnYou == nil then warnYou = self.db.profile.sparks end
 		if warnYou and target and (target == playerGuid or target == UnitName("player") or UnitIsUnit(target, "player")) then

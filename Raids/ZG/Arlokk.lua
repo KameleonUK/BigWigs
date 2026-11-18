@@ -1,5 +1,6 @@
 
 local module, L = BigWigs:ModuleDeclaration("High Priestess Arlokk", "Zul'Gurub")
+local vanished = nil
 
 module.revision = 30078
 module.enabletrigger = module.translatedName

@@ -1,6 +1,14 @@
 local name = "Spell Requests"
 local L = AceLibrary("AceLocale-2.2"):new("BigWigs" .. name)
-local BS = AceLibrary("Babble-Spell-2.3")
+local BS = BigWigs:SpellNameTable({
+	["Hand of Protection"] = 1022,
+	["Innervate"] = 29166,
+	["Fear Ward"] = 6346,
+	["Tranquility"] = 740,
+	["Power Word: Shield"] = 17,
+	["Challenging Shout"] = 1161,
+	["Rebirth"] = 20484,
+})
 
 local hasSuperWow = nil;
 if CombatLogAdd then

@@ -1,0 +1,582 @@
+<title>BigWigs ClassicAPI Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, a sticky section index on wide screens, items as ruled rows keyed by ID. */
+:root {
+  --bg: #fbfafc;
+  --surface: #f2eff5;
+  --fg: #1f1b24;
+  --muted: #625a6c;
+  --line: #ddd6e3;
+  --accent: #7d4f86;        /* ClassicAPI lilac, deepened for text contrast */
+  --accent-soft: #efe4f1;
+  --wigs: #b8403d;          /* Big Wigs title red */
+  --high: #b3261e; --high-bg: #fbe5e3;
+  --med: #8a5a00;  --med-bg: #fbefd6;
+  --low: #3d6b4f;  --low-bg: #e3f1e8;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17141b; --surface: #211d27; --fg: #ece7f1; --muted: #a79eb2; --line: #3a3343;
+    --accent: #d2abd3; --accent-soft: #33283a; --wigs: #f08a86;
+    --high: #ff9b92; --high-bg: #3d1f1d; --med: #f0c46c; --med-bg: #3a2f17; --low: #8fd0a6; --low-bg: #1d3226;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17141b; --surface: #211d27; --fg: #ece7f1; --muted: #a79eb2; --line: #3a3343;
+  --accent: #d2abd3; --accent-soft: #33283a; --wigs: #f08a86;
+  --high: #ff9b92; --high-bg: #3d1f1d; --med: #f0c46c; --med-bg: #3a2f17; --low: #8fd0a6; --low-bg: #1d3226;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+main { min-width: 0; max-width: 760px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 34px; margin: 0 0 8px; letter-spacing: -0.01em; }
+h1 .w { color: var(--wigs); }
+h2 { font-size: 23px; margin: 56px 0 12px; padding-top: 12px; border-top: 2px solid var(--fg); }
+h3 { font-size: 17px; margin: 28px 0 8px; }
+p { margin: 0 0 12px; }
+.lede { color: var(--muted); font-size: 16px; max-width: 65ch; }
+.eyebrow { font: 600 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--surface); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 20px 0; }
+.facts div { background: var(--bg); padding: 12px 14px; }
+.facts b { display: block; font: 600 20px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.facts span { color: var(--muted); font-size: 12.5px; }
+.callout { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 14px 16px; margin: 16px 0; }
+.callout.warn { background: var(--med-bg); border-left-color: var(--med); }
+.callout p:last-child { margin-bottom: 0; }
+ol.headline { padding-left: 22px; display: grid; gap: 6px; }
+.item { border-top: 1px solid var(--line); padding: 16px 0; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 14px; }
+.item:last-of-type { border-bottom: 1px solid var(--line); }
+.id { font: 600 14px/1.5 var(--font-mono); color: var(--accent); }
+.item h4 { margin: 0 0 6px; font: 600 15.5px/1.4 var(--font-body); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pill { font: 500 11.5px/1 var(--font-mono); padding: 4px 7px; border-radius: 3px; background: var(--surface); color: var(--muted); white-space: nowrap; }
+.pill.high { background: var(--high-bg); color: var(--high); }
+.pill.med { background: var(--med-bg); color: var(--med); }
+.pill.low { background: var(--low-bg); color: var(--low); }
+.item dl { margin: 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; font-size: 14px; }
+.item dt { color: var(--muted); font-size: 12.5px; padding-top: 2px; }
+.item dd { margin: 0; min-width: 0; }
+.scroll { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+td.v { font-weight: 600; white-space: nowrap; }
+.v-remove { color: var(--high); } .v-replace { color: var(--med); } .v-keep { color: var(--low); }
+pre { background: var(--surface); padding: 12px 14px; overflow-x: auto; font: 13px/1.5 var(--font-mono); margin: 12px 0; }
+ul.tight { padding-left: 20px; margin: 0 0 12px; }
+ul.tight li { margin-bottom: 4px; }
+.batch { border: 1px solid var(--line); padding: 14px 16px; margin: 12px 0; }
+.batch h3 { margin: 0 0 6px; }
+.batch .ids { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  nav.toc { display: none; }
+  h1 { font-size: 28px; }
+}
+@media (max-width: 480px) {
+  .item { grid-template-columns: minmax(0, 1fr); }
+  .item dl { grid-template-columns: minmax(0, 1fr); }
+  .item dt { padding-top: 6px; }
+}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Sections">
+  <ol>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#gating">Gating</a></li>
+    <li><a href="#bugs">Bugs</a></li>
+    <li><a href="#opportunities">ClassicAPI opportunities</a></li>
+    <li><a href="#unfinished">Unfinished work</a></li>
+    <li><a href="#options">Options &amp; commands</a></li>
+    <li><a href="#libraries">Libraries</a></li>
+    <li><a href="#order">Suggested order</a></li>
+    <li><a href="#tests">Test checklist</a></li>
+    <li><a href="#out">Out of scope</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">ClassicAPI modernisation · stage 1 plan · no code changed</div>
+<h1>Pepopo <span class="w">Big Wigs</span> 30146</h1>
+<p class="lede">An analysis of BigWigs 2.0.6 (revision 30146, your fork <code>KameleonUK/BigWigs</code>) for a ClassicAPI-only build. Reply with the item IDs you want done, for example “B1–B4, O1, O6, skip O15”.</p>
+
+<section id="summary">
+<h2>Summary</h2>
+<p>BigWigs is the Turtle WoW boss-mod: timer bars, warning messages, sounds, raid marks and raid syncs for about 150 encounters, plus raid-utility plugins (cooldown tracking, proximity, pull timer, version check). It is built on Ace2.</p>
+<div class="facts">
+  <div><b>69,100</b><span>lines of BigWigs code</span></div>
+  <div><b>151</b><span>boss modules, 51,000 lines</span></div>
+  <div><b>34</b><span>plugins, 14,800 lines</span></div>
+  <div><b>26</b><span>embedded Ace2 libraries, 1.4 MB</span></div>
+  <div><b>1,025</b><span>combat-chat event registrations</span></div>
+</div>
+<p><strong>API reference used:</strong> the latest <code>docs/API.md</code> from GitHub (29,216 lines). It was newer than your local copy, so the AddOns-root files were rotated: <code>API.md</code> is now the previous release (27,166 lines) and <code>API-Latest.md</code> the new one.</p>
+<p><strong>Coverage:</strong> <code>Core.lua</code>, <code>Options.lua</code> and the plugins with ClassicAPI relevance were read closely. The 151 boss modules share one template, so they were pattern-scanned across every file (events, triggers, targeting, GUID and aura use, globals, Lua 5.0 traps), with representative modules read in full. Every file passed a syntax check, and the loop-key checker found no real hits in BigWigs’ own code.</p>
+<h3>Headline: the five changes worth the most</h3>
+<ol class="headline">
+  <li><strong>Combat-log dispatcher for boss modules (O1–O4).</strong> Boss modules listen to about 11 chat events each and match English sentences. ClassicAPI’s structured combat log gives the spell ID, source and target GUIDs, and resist or immune results. That makes triggers exact and independent of client language. Engage, boss-death and cast detection can also stop polling.</li>
+  <li><strong>Aura and GUID helpers without SuperWoW quirks (O5, O6).</strong> Fixes a crash path (B1) and debuff checks that miss Turtle’s overflow debuffs (B4), and replaces 24 raid-target scan loops.</li>
+  <li><strong>Drop SpellStatusV2 and Babble-Spell (O8, O9).</strong> Player cast events with spell IDs replace a library that hooks every spell you cast, and a 524 KB name table used for about 40 spells.</li>
+  <li><strong>AddOn Options pages built from the existing option tables (O15).</strong> Every plugin and boss setting appears in Game Menu › AddOn Options without editing 151 modules, and the FuBar menu goes.</li>
+  <li><strong>Exact-yard proximity and alerts that play with game sounds muted (O10, O11).</strong></li>
+</ol>
+</section>
+
+<section id="gating">
+<h2>Gating</h2>
+<div class="callout warn">
+  <p><strong>Decision needed first.</strong> Only your UHD client loads <code>ClassicAPI.dll</code>. The standard Turtle client’s <code>dlls.txt</code> doesn’t list it, and both clients share one <code>Interface</code> folder. After gating, the standard client would load only the stub and BigWigs would be off there. Either you play only the UHD client, or ClassicAPI is added to the standard client’s <code>dlls.txt</code> as well.</p>
+</div>
+<h3>Backup</h3>
+<p>Before the first edit: <code>C:\Gaming\World of Warcraft - Turtle\Interface\AddOns\BigWigs-2.0.6-pre-ClassicAPI.zip</code>, with the <code>BigWigs</code> folder at its top level so extracting it restores the addon. The installed folder isn’t a git repo; your GitHub fork is. The recommended flow is to make each batch in a clone of the fork, install it, and commit only after you’ve tested it in game.</p>
+<h3>TOC layout</h3>
+<pre>BigWigs_ClassicAPI.toc   full manifest: libraries, LoadOnDemand.lua, Core.lua, Options.lua,
+                         plugins, modules; classicapi_check.lua listed first;
+                         SavedVariables unchanged
+BigWigs.toc              stub: same Title, Author, Version; no SavedVariables;
+                         one file, classicapi_required.lua (prints a login message)</pre>
+<ul class="tight">
+  <li><strong>Title (both):</strong> <code>|cFFFF8080Pepopo|r Big Wigs |cff7fff7f30146|r |cffabd473Turtle-WoW|r |cffc8a2c8(Requires Classic API)|r</code></li>
+  <li><strong>Author (both):</strong> the current list, then <code>&amp; Heallios</code>: <code>Relar, Balake, Pepopo, …, Dorann, Hosq, Others &amp; Heallios</code>.</li>
+  <li><strong>Entry point guard:</strong> <code>BigWigs:OnInitialize</code> returns early when <code>BIGWIGS_CLASSICAPI_MISSING</code> is set.</li>
+  <li><strong>No conflicts found:</strong> there is no <code>BigWigs_Turtle.toc</code>, and no other addon declares BigWigs as a dependency.</li>
+</ul>
+<h3>Things that must not change</h3>
+<ul class="tight">
+  <li><strong>Each module’s <code>module.revision</code>.</strong> Every sync name is built from it (for example <code>"LucifronCurseRep"..module.revision</code>). Changing it on a converted module would stop that module syncing with raid members on any other BigWigs build.</li>
+  <li><strong>Sync names and the BigWigs <code>X-Revision</code>.</strong> They keep raid syncs and the version check working with other players.</li>
+  <li><strong>SavedVariables.</strong> All saved data keeps its current tables and keys.</li>
+</ul>
+<h3>REQUIRED functions</h3>
+<p>The check file lists only what the approved items call. With every item approved:</p>
+<pre>CombatLogGetCurrentEventInfo   UnitGUID              UnitTokenFromGUID
+UnitDistanceSquared            GetSpellInfo          CancelUnitBuff
+C_UnitAuras.GetUnitAuraBySpellID   C_UnitAuras.GetAuraDataByIndex
+C_Timer.NewTimer               hooksecurefunc        InterfaceOptions_AddCategory</pre>
+<p>Events (<code>COMBAT_LOG_EVENT_UNFILTERED</code>, <code>UNIT_SPELLCAST_*</code>, <code>UI_SCALE_CHANGED</code>, <code>NAME_PLATE_UNIT_ADDED</code>) and <code>texture:SetMask</code> can’t be tested by name. <code>CLASSIC_API_VERSION</code> covers them.</p>
+</section>
+
+<section id="bugs">
+<h2>Bugs</h2>
+<p>Sure means traced through the code. Likely means the pattern is wrong but hasn’t been seen failing.</p>
+
+<article class="item"><div class="id">B1</div><div>
+  <h4>CancelAuraId errors without SuperWoW</h4>
+  <div class="meta"><span class="pill med">medium</span><span class="pill">sure</span><span class="pill">Core.lua:1816</span></div>
+  <dl><dt>Scenario</dt><dd>Without <code>GetPlayerBuffID</code>, the function prints “Superwow required” and then calls it anyway, raising “attempt to call a nil value”. Echo of Medivh calls it (<code>EchoOfMedivh.lua:228</code>).</dd>
+  <dt>Fix</dt><dd>Find the buff with <code>C_UnitAuras.GetUnitAuraBySpellID("player", id, "HELPFUL")</code> and cancel it with <code>CancelUnitBuff</code>, with no SuperWoW dependency. Part of O6.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B2</div><div>
+  <h4>Engage scan writes wipe mobs into the module’s enable list</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">sure, dormant</span><span class="pill">Core.lua:898–913</span></div>
+  <dl><dt>Scenario</dt><dd>When <code>enabletrigger</code> is a table, <code>IsBossInCombat</code> inserts every wipe mob into that same table every 0.5 s while it waits for the pull. The table grows without limit, and the adds become enable triggers. No current module has both a table trigger and <code>wipemobs</code>, so it fires only for a future module.</dd>
+  <dt>Fix</dt><dd>Build a local list instead of writing into <code>module.enabletrigger</code>.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B3</div><div>
+  <h4>Global variable leaks with generic names</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">sure</span><span class="pill">luac SETGLOBAL</span></div>
+  <dl><dt>Scenario</dt><dd>About 30 accidental globals, including <code>events</code> (MageTools), <code>b</code> (FRBuffMacro), <code>element</code> (<code>Ossirian.lua:263</code>), <code>debuffActive</code> (<code>Proximity.lua:606</code>), <code>_</code> (Bars, Messages, WarningSign), <code>bwPlayerIsAttacking</code> (shared by two modules), <code>cocoonedPlayer</code>, <code>vanished</code>, <code>watchForSpawn</code> and <code>p2</code>. Another addon using the same name can overwrite them, or be overwritten.</dd>
+  <dt>Fix</dt><dd>Make each one <code>local</code>, after checking it isn’t read from another file.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B4</div><div>
+  <h4>Debuff checks miss Turtle’s overflow debuffs and need SuperWoW</h4>
+  <div class="meta"><span class="pill med">medium</span><span class="pill">likely</span><span class="pill">Core.lua:1996–2050</span></div>
+  <dl><dt>Scenario</dt><dd><code>BuffIsPresent</code> and <code>DebuffIsPresent</code> read a spell ID from SuperWoW’s extra <code>UnitBuff</code> / <code>UnitDebuff</code> returns and only walk the 16 debuff slots. Turtle moves extra debuffs into buff slots once those are full, which is common on raid bosses. Ezzel’s cast-time scaling and Curse of Tongues check (<code>Ezzel.lua:174–204</code>) then give wrong timers.</dd>
+  <dt>Fix</dt><dd>Use <code>C_UnitAuras.GetUnitAuraBySpellID(unit, id, "HARMFUL")</code>, which sorts by real polarity. Part of O6.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B5</div><div>
+  <h4>Two different SuperWoW checks</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">sure</span><span class="pill">Core.lua:1064</span></div>
+  <dl><dt>Scenario</dt><dd>The core defines <code>RegisterCastEventsForUnitName</code> only when <code>SUPERWOW_STRING or SetAutoloot</code> is set. Nine modules (Ebonroc, Firemaw, Flamegor, Nefarian, ChessFight, Rupturan, Axelus and others) call it after testing <code>SUPERWOW_VERSION or SetAutoloot</code>. A SuperWoW build that defines one global and not the other would make those modules error at engage. Your SuperWoW sets both, so it works today.</dd>
+  <dt>Fix</dt><dd>Goes away with O4, which replaces the SuperWoW path. Otherwise, use one shared check.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B6</div><div>
+  <h4>Class checks compare against English names</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">sure</span><span class="pill">197 checks in 66 files</span></div>
+  <dl><dt>Scenario</dt><dd><code>UnitClass("player") == "Warrior"</code> uses the localised first return, so on a non-English client every check is false: cooldown tracking in CommonAuras and class-specific alerts in the boss modules stay off. <code>Jindo.lua:274–286</code> also has a duplicate Warrior branch that can never run. This doesn’t affect an English client.</dd>
+  <dt>Fix</dt><dd>Compare the second return, the English class token (<code>select(2, UnitClass("player")) == "WARRIOR"</code>). The change is mechanical.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B7</div><div>
+  <h4>Anchors move when the UI scale changes during play</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">likely</span><span class="pill">Messages, Bars, WarningSign, Proximity</span></div>
+  <dl><dt>Scenario</dt><dd>Positions are saved in screen units and restored once. If the UI scale or window size changes during the session, every anchor shifts until the next login. Your Messages fix (restore in <code>OnEnable</code>) covers only login.</dd>
+  <dt>Fix</dt><dd>O12: restore every anchor on <code>UI_SCALE_CHANGED</code>.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">B8</div><div>
+  <h4>Replaced Blizzard functions that other addons may also hook</h4>
+  <div class="meta"><span class="pill low">low</span><span class="pill">likely</span><span class="pill">RaidOfficer.lua:72–83 · ChessFight.lua:176–225</span></div>
+  <dl><dt>Scenario</dt><dd>RaidOfficer overwrites <code>RaidGroupButton_OnDragStart</code> / <code>OnDragStop</code>. Its guard checks for an addon named <code>"unknownyet"</code>, which never exists. ChessFight replaces <code>ChatFrame_OnEvent</code> and later restores the copy it saved, which drops any hook another addon added in between.</dd>
+  <dt>Fix</dt><dd>RaidOfficer: drop the dead guard and keep the originals local. ChessFight: use the AceHook pattern BossBlock already uses, which unhooks cleanly.</dd></dl>
+</div></article>
+</section>
+
+<section id="opportunities">
+<h2>ClassicAPI opportunities</h2>
+
+<h3>Boss encounters</h3>
+
+<article class="item"><div class="id">O1</div><div>
+  <h4>Combat-log dispatcher for boss modules</h4>
+  <div class="meta"><span class="pill">effort L</span><span class="pill">risk M</span><span class="pill">reliability · language</span></div>
+  <dl><dt>Now</dt><dd>154 files register 1,025 <code>CHAT_MSG_SPELL_*</code> / <code>CHAT_MSG_COMBAT_*</code> events and match about 1,086 text patterns, for example <code>trigger_curse = "afflicted by Lucifron's Curse."</code> plus a separate resist pattern (<code>Lucifron.lua:84–98</code>).</dd>
+  <dt>Replace</dt><dd>One <a href="https://github.com/brues-code/ClassicAPI/blob/master/docs/API.md#combat_log_event_unfiltered--combat_log_event-events"><code>COMBAT_LOG_EVENT_UNFILTERED</code></a> frame in the core, read with <code>CombatLogGetCurrentEventInfo()</code>, dispatching by subevent and spell ID to the active modules: <code>module:RegisterCombatLog("SPELL_AURA_APPLIED", spellId, handler)</code>. Handlers get source and target GUIDs and names, <code>missType</code> (<code>RESIST</code>, <code>IMMUNE</code>) and stack counts.</dd>
+  <dt>Gain</dt><dd>Exact matches with no partial-text false positives, any client language, one event instead of about 11 per module, and resists or immunes detected without a second pattern.</dd>
+  <dt>Plan</dt><dd>Build the dispatcher, then convert three pilot modules: Lucifron (plain), Ragnaros (tank tracking) and Ebonroc (SuperWoW cast path). Further modules are converted on request, with each module’s syncs and <code>revision</code> unchanged. Turtle’s custom raids use custom spell IDs. Collect them from your own logs with ClassicAPI’s <code>/replay</code> (<code>C_CombatLogReplay.GetEvents</code> lists every <code>spellID</code>).</dd>
+  <dt>Risk</dt><dd>Events still arrive only for what the server sends nearby, as chat does. Spells hidden from the combat log fire nothing, so check each pilot module against a log.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O2</div><div>
+  <h4>Boss death from the combat log</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">reliability</span></div>
+  <dl><dt>Now</dt><dd><code>CheckForBossDeath</code> compares the chat line with <code>string.format(UNITDIESOTHER, name)</code> (<code>Core.lua:1034</code>).</dd>
+  <dt>Replace</dt><dd><code>UNIT_DIED</code> with <code>destName</code> / <code>destGUID</code> in the O1 dispatcher.</dd>
+  <dt>Gain</dt><dd>Works in any language and for bosses with several units of the same name.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O3</div><div>
+  <h4>Engage detection from the combat log</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk M</span><span class="pill">reliability · performance</span></div>
+  <dl><dt>Now</dt><dd>After you enter combat, <code>CheckForEngage</code> scans <code>raid1target</code>–<code>raid40target</code> every 0.5 s until someone targets the boss in combat (<code>Core.lua:895–950</code>).</dd>
+  <dt>Replace</dt><dd>Engage on the first damage or swing event whose source or target is an enable-trigger name. Keep the scan as a fallback.</dd>
+  <dt>Gain</dt><dd>Engages when the boss is hit even if nobody targets it, with no polling. This also answers KaraTrash’s note about pull detection (F1).</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O4</div><div>
+  <h4>One cast-detection path instead of SuperWoW’s UNIT_CASTEVENT</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk M</span><span class="pill">simplicity</span></div>
+  <dl><dt>Now</dt><dd><code>RegisterCastEventsForUnitName</code> exists only with SuperWoW (<code>Core.lua:1064–1108</code>), and 10 files carry a second, text-based path for players without it.</dd>
+  <dt>Replace</dt><dd>Combat-log <code>SPELL_CAST_START</code> / <code>SPELL_CAST_SUCCESS</code> by source name or GUID, with <code>C_Spell.UnitCastingInfo(unit)</code> for the cast end time when a unit token is known. Keep the callback signature so modules don’t change.</dd>
+  <dt>Gain</dt><dd>One path, no SuperWoW dependency, and fixes B5.</dd>
+  <dt>Risk</dt><dd><code>SPELL_CAST_START</code> has no target, while SuperWoW’s event has one. Modules that read the target at cast start (Flamegor’s mind control bar) need the <code>SUCCESS</code> event instead.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O5</div><div>
+  <h4>GUIDs and boss health without raid-target scans</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk L</span><span class="pill">performance · simplicity</span></div>
+  <dl><dt>Now</dt><dd>24 files loop <code>raid..i.."target"</code> to find a boss, often from a 0.5 s timer. Seven files get GUIDs from SuperWoW’s <code>local _, guid = UnitExists(unit)</code>.</dd>
+  <dt>Replace</dt><dd><code>UnitGUID(unit)</code>. A GUID string is itself a unit token in ClassicAPI, so <code>UnitHealth(bossGUID)</code> works once the boss GUID is known from O1. <code>UnitTokenFromGUID</code> covers the rest.</dd>
+  <dt>Gain</dt><dd>Health checks don’t depend on someone targeting the boss, and there’s less work per tick.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O6</div><div>
+  <h4>Aura helpers on C_UnitAuras</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">reliability</span></div>
+  <dl><dt>Now</dt><dd><code>BuffIsPresent</code>, <code>DebuffIsPresent</code>, <code>CancelAuraId</code> and <code>CancelAuraTexture</code> (<code>Core.lua:1816–2024</code>). There is also a hidden-tooltip scanner, <code>BuffNameByIndex</code>, and an <code>OffsetGUID</code> helper, and neither has any callers.</dd>
+  <dt>Replace</dt><dd><code>C_UnitAuras.GetUnitAuraBySpellID(unit, spellID [, filter])</code> and <code>CancelUnitBuff</code>. Remove the two unused helpers and the tooltip frame.</dd>
+  <dt>Gain</dt><dd>Fixes B1 and B4.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O7</div><div>
+  <h4>Enable boss modules when the boss nameplate appears</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">functionality</span></div>
+  <dl><dt>Now</dt><dd>TargetMonitor enables a module only when you target or mouse over the boss (<code>TargetMonitor.lua:53–85</code>).</dd>
+  <dt>Replace</dt><dd>Also listen to <code>NAME_PLATE_UNIT_ADDED</code> and check <code>UnitName</code> of the nameplate token.</dd>
+  <dt>Gain</dt><dd>Timers are ready before the pull without anyone targeting the boss.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O17</div><div>
+  <h4>Wyrmguard vulnerabilities per unit, with that unit’s own raid mark</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk M</span><span class="pill">reliability</span><span class="pill">Wyrmguards.lua</span></div>
+  <dl><dt>Now</dt><dd>The module reads damage chat lines and calls a school the vulnerability when one hit passes a fixed number, for example 1,300 fire or 1,700 shadow (<code>Wyrmguards.lua:117–259</code>). Four things make it a guess:
+    <ul class="tight">
+      <li><strong>Wrong mark:</strong> the mark comes from <em>your</em> current target (<code>GetRaidTargetIndex("Target")</code>, line 285), even when the hit was another player’s on a different Wyrmguard. That’s why bars often show the wrong icon or “No Icon”.</li>
+      <li><strong>Units can’t be told apart:</strong> every Wyrmguard has the same name in chat.</li>
+      <li><strong>Gear-dependent thresholds:</strong> a strong caster passes them on a non-vulnerable target, and a weak one misses them on the vulnerable one.</li>
+      <li><strong>One bar per school per pull:</strong> two Wyrmguards with the same school show one bar. The flags are globals (B3), and nothing is shared with the raid.</li>
+    </ul></dd>
+  <dt>Replace</dt><dd>Combat-log damage events through the O1 dispatcher. Each hit carries the <code>destGUID</code> of the exact Wyrmguard, its raid mark at that moment (<code>destRaidFlags</code>, bits <code>COMBATLOG_OBJECT_RAIDTARGET1</code>–<code>8</code>), <code>spellId</code>, the spell school, <code>amount</code>, <code>resisted</code> and <code>critical</code>.
+    <ul class="tight">
+      <li><strong>Per-unit evidence:</strong> keep a record per GUID per school.</li>
+      <li><strong>Relative test:</strong> compare non-crit hits of the same spell from the same caster across Wyrmguards. The vulnerable one stands out whatever the caster’s gear. Keep the fixed thresholds only as a fallback when there is nothing to compare.</li>
+      <li><strong>Resists:</strong> a school that is fully or partly resisted rules itself out for that unit.</li>
+      <li><strong>Raid sync:</strong> once a unit is decided, sync it to the raid as GUID, school and mark. Each player’s client then adds what it sees.</li>
+      <li><strong>Display:</strong> one bar per Wyrmguard, for example “Skull · Fire Vulnerability”. The mark updates if the raid leader re-marks the unit, and the bar goes when that GUID dies (<code>UNIT_DIED</code>).</li>
+    </ul></dd>
+  <dt>The aura</dt><dd>The database lists a “Double received damage” aura per school on Wyrmguards: Fire 33001, Nature 33002, Shadow 33003, Frost 33004, Arcane 33005. They have no icon. That only matters to the game’s buff display, so the open question is whether the server includes the aura in the unit’s aura list. The reference doesn’t say, so the first BWL run settles it.</dd>
+  <dt>Detection order</dt><dd>
+    <ol class="tight">
+      <li><strong>Aura list:</strong> <code>C_UnitAuras.GetUnitAuraBySpellID(unit, 33001…33005)</code> on any Wyrmguard token. ClassicAPI’s <code>mark1</code>–<code>mark8</code> tokens resolve to whichever unit wears each raid mark, so BigWigs can check every marked Wyrmguard directly (<code>"mark8"</code> is skull) and update when <code>UNIT_AURA</code> fires for a mark token. This is exact, needs no combat, and pairs each school with its mark by construction.</li>
+      <li><strong>Combat log:</strong> <code>SPELL_AURA_APPLIED</code> or <code>SPELL_CAST_SUCCESS</code> with those IDs, if the server logs the application while you are in range.</li>
+      <li><strong>Damage evidence:</strong> the relative-damage method above, as the fallback.</li>
+    </ol>
+    Whichever finds it first syncs GUID, school and mark to the raid.</dd>
+  <dt>Tests</dt><dd>Run in BWL before the Wyrmguard pulls.
+    <ul class="tight">
+      <li><strong>With a Wyrmguard targeted:</strong> <code>/script for i=33001,33005 do local a=C_UnitAuras.GetUnitAuraBySpellID("target",i) DEFAULT_CHAT_FRAME:AddMessage(i..": "..(a and a.name or "not found")) end</code></li>
+      <li><strong>Once, to watch the combat log until the next reload:</strong> <code>/script local f=CreateFrame("Frame")f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")f:SetScript("OnEvent",function()local _,e,_,_,_,_,_,_,_,_,_,i=CombatLogGetCurrentEventInfo()if i and i&gt;33000 and i&lt;33006 then ChatFrame1:AddMessage(e.." "..i)end end)</code></li>
+    </ul></dd>
+  <dt>Gain</dt><dd>The right school on the right mark for each Wyrmguard, shared across the raid. It works whoever does the damage, and in any client language.</dd>
+  <dt>Keep</dt><dd><code>module.revision</code> (20041) and the War Stomp sync name, so War Stomp bars still sync with raid members on other builds.</dd></dl>
+</div></article>
+
+<h3>Plugins</h3>
+
+<article class="item"><div class="id">O8</div><div>
+  <h4>Raid cooldown tracking from player cast events</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk M</span><span class="pill">performance · simplicity</span></div>
+  <dl><dt>Now</dt><dd>CommonAuras and CombatAnnouncement detect your Shield Wall, Fear Ward, portals and so on through SuperWoW or <code>SpellStatusV2</code>, which hooks <code>CastSpell</code>, <code>UseAction</code> and others for every cast. They compare names from Babble-Spell (<code>CommonAuras.lua:458–613</code>, <code>CombatAnnouncement.lua:666–669</code>).</dd>
+  <dt>Replace</dt><dd><a href="https://github.com/brues-code/ClassicAPI/blob/master/docs/API.md#unit_spellcast_-events"><code>UNIT_SPELLCAST_SENT</code></a> (target name) and <code>UNIT_SPELLCAST_SUCCEEDED</code> (spell ID) for <code>"player"</code>. Compare spell IDs and take display names from <code>GetSpellInfo(spellID)</code>.</dd>
+  <dt>Gain</dt><dd>Removes SpellStatusV2, SpellCache, Deformat and Babble-Spell, and fixes the English class checks in these two files.</dd>
+  <dt>Risk</dt><dd>Mage portals are hidden from the combat log. Confirm in game that <code>UNIT_SPELLCAST_SUCCEEDED</code> fires for them before removing the old path. RaidIcon’s chat markers read <code>SpellstatusV2IndexToIcon</code> from that library, so the table moves into RaidIcon.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O9</div><div>
+  <h4>Dazed warnings from the combat log</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">performance</span></div>
+  <dl><dt>Now</dt><dd>ZombieFood uses <code>SpecialEvents-Aura</code>, which tooltip-scans raid members’ auras on every <code>UNIT_AURA</code> to spot “Dazed” (<code>ZombieFood.lua:93</code>).</dd>
+  <dt>Replace</dt><dd><code>SPELL_AURA_APPLIED</code> for Dazed in the O1 dispatcher, matching its spell ID, which needs confirming in game.</dd>
+  <dt>Gain</dt><dd>Removes SpecialEvents-Aura, RosterLib and Gratuity, and with them the per-aura tooltip scans.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O10</div><div>
+  <h4>Proximity in real yards</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk L</span><span class="pill">functionality · performance</span></div>
+  <dl><dt>Now</dt><dd><code>CheckInteractDistance</code> gives only fixed bands (about 10, 11 and 28 yards). The scan runs 10 times a second and builds two new tables each time. Debuff tracking matches icon textures in 16 slots (<code>Proximity.lua:412–479, 652–694</code>).</dd>
+  <dt>Replace</dt><dd><a href="https://github.com/brues-code/ClassicAPI/blob/master/docs/API.md#unitdistancesquaredunit"><code>UnitDistanceSquared(unit)</code></a> against a per-module range (<code>module.proximityRange</code>, default 10). List the nearest players first with their distance, reuse the tables, and track debuffs with <code>C_UnitAuras</code> by spell ID.</dd>
+  <dt>Gain</dt><dd>Each boss can set its real range (C’Thun, Hakkar), and you see how close each player is.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O11</div><div>
+  <h4>Alert sounds on the Master channel</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">functionality</span></div>
+  <dl><dt>Now</dt><dd><code>PlaySoundFile(file)</code> and the fallback <code>PlaySound("RaidWarning")</code> use the effects volume, so alerts are silent with game sounds off (<code>Sound.lua:207–229</code>).</dd>
+  <dt>Replace</dt><dd><code>PlaySoundFile(file, channel)</code> with a Sound-channel setting, Master by default. <code>PlaySound</code> takes no channel, so the fallback plays the raid warning through its file path, <code>Sound\Interface\RaidWarning.wav</code>, which ClassicAPI’s own example uses.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O12</div><div>
+  <h4>Anchors follow UI scale changes</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">reliability</span></div>
+  <dl><dt>Replace</dt><dd>One <code>UI_SCALE_CHANGED</code> handler that calls each plugin’s <code>RestorePosition</code>. The event fires after <code>UIParent</code> has its new scale, including the first time the scale is applied at login, which is what caused your Messages bug.</dd>
+  <dt>Gain</dt><dd>Fixes B7 for every anchor and makes the Messages fix general.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O13</div><div>
+  <h4>Warning-sign timeout with C_Timer</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">simplicity</span></div>
+  <dl><dt>Now</dt><dd>An <code>OnUpdate</code> script checks <code>GetTime()</code> every frame while an icon shows (<code>WarningSign.lua:258–265</code>).</dd>
+  <dt>Replace</dt><dd><code>C_Timer.NewTimer(duration, hide)</code>, cancelled when a new icon replaces it.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O14</div><div>
+  <h4>FRBuffMacro without tooltip scans</h4>
+  <div class="meta"><span class="pill">effort S</span><span class="pill">risk L</span><span class="pill">reliability</span></div>
+  <dl><dt>Now</dt><dd><code>/frbuff</code> scans buff tooltips for English names and uses <code>CheckInteractDistance(unit, 4)</code> (<code>FRBuffMacro.lua:6–50</code>). It also leaks the global <code>b</code>.</dd>
+  <dt>Replace</dt><dd><code>C_UnitAuras.GetAuraDataBySpellName</code> or spell IDs, and <code>UnitDistanceSquared</code> for range.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O18</div><div>
+  <h4>Spoken warnings</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk L</span><span class="pill">functionality</span><span class="pill">built</span></div>
+  <dl><dt>What</dt><dd>116 voice lines (voice: Siren, ElevenLabs) in <code>Sounds\Voice</code>. When a boss warning shows, the Sounds plugin plays the matching voice line instead of the alert sound, on the chosen sound channel. Warnings without a line play the alert sound as before.</dd>
+  <dt>Matching</dt><dd>96 rules in <code>Sound.lua</code>, each a set of words that must appear in the English warning text plus words that must not (“no longer”, “soon”). The first rule that fits wins. No boss module changes. Checked against all 636 warning texts: 207 get a voice line, with no wrong matches after review.</dd>
+  <dt>Options</dt><dd>Plugins › Sounds: <strong>Spoken warnings</strong> (off by default), then four groups: Personal warnings, Raid calls, Phase changes, Vulnerabilities. Each boss’s existing per-warning toggles still silence individual warnings.</dd>
+  <dt>Later</dt><dd>The 40 Wyrmguard mark-and-school lines are recorded, and are played by O17 once that is built.</dd></dl>
+</div></article>
+
+<h3>Options and interface</h3>
+
+<article class="item"><div class="id">O15</div><div>
+  <h4>AddOn Options pages and a plain minimap button</h4>
+  <div class="meta"><span class="pill">effort L</span><span class="pill">risk M</span><span class="pill">functionality · simplicity</span></div>
+  <dl><dt>Now</dt><dd>All settings live in AceConsole option tables (<code>BigWigs.cmdtable</code>), shown as a FuBar or minimap Dewdrop menu. <code>Options.lua:149–157</code> merges FuBar’s own options in (“XXX total hack”).</dd>
+  <dt>Replace</dt><dd>Pages built with the classicapi-options-panel kit by an adapter that walks those same tables: <code>toggle</code> → checkbox, <code>range</code> → slider, <code>text</code> with <code>validate</code> → dropdown, other <code>text</code> → edit box (with a Start button for one-shot inputs such as custom bars), <code>color</code> → colour, <code>execute</code> → button, <code>group</code> → page or section. No boss module changes. See <a href="#options">Options &amp; commands</a> for the layout.</dd>
+  <dt>Gain</dt><dd>Every setting appears in Game Menu › AddOn Options, and FuBarPlugin goes.</dd>
+  <dt>Keep</dt><dd><strong>Your note:</strong> the minimap button keeps the same icon texture (<code>Icons\core-enabled</code> / <code>core-disabled</code>), built without Ace. Its menu keeps the Test options (local test, sync test, voice test) and the Enable / Disable BigWigs option. The menu uses the game’s own <code>UIDropDownMenu</code> in place of Dewdrop.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">O16</div><div>
+  <h4>Version check and resist check windows as plain frames</h4>
+  <div class="meta"><span class="pill">effort M</span><span class="pill">risk L</span><span class="pill">simplicity</span></div>
+  <dl><dt>Now</dt><dd>Both draw their result lists with Tablet and Dewdrop (<code>Version.lua:182</code>, <code>ResistCheck.lua:5–6</code>).</dd>
+  <dt>Replace</dt><dd>A small scrolling list frame shared by both.</dd>
+  <dt>Gain</dt><dd>With O15, removes Tablet and Dewdrop.</dd></dl>
+</div></article>
+</section>
+
+<section id="unfinished">
+<h2>Unfinished features &amp; authors’ notes</h2>
+
+<article class="item"><div class="id">F1</div><div>
+  <h4>KaraTrash: magus tracking, Overseer AoE, pull detection</h4>
+  <div class="meta"><span class="pill">KaraTrash.lua:81, 84, 172</span><span class="pill">leave · pull detection via O3</span></div>
+  <dl><dt>Note</dt><dd>“todo: replace this with a proper top level flags detection feature for pull detection.” O3 provides that for all modules. The magus and Overseer additions need encounter data; leave them.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F2</div><div>
+  <h4>Mephistroth: is Shackles a channel, and enrage after a shard</h4>
+  <div class="meta"><span class="pill">Mephistroth.lua:153, 173</span><span class="pill">answer from a log</span></div>
+  <dl><dt>Note</dt><dd>A ClassicAPI replay of the fight (<code>GetUnitCast</code> returns <code>isChannel</code>) settles the first question. The enrage bar can follow once that’s known.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F3</div><div>
+  <h4>Kronn: extra creature-damage event</h4>
+  <div class="meta"><span class="pill">Kronn.lua:100</span><span class="pill">resolved by O1</span></div>
+  <dl><dt>Note</dt><dd>“TODO: remove if BUFF covers casts properly.” The combat log reports casts directly, so the question goes away when Kronn is converted.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F4</div><div>
+  <h4>Onyxia: phase 2 from health instead of the yell</h4>
+  <div class="meta"><span class="pill">Onyxia.lua:315</span><span class="pill">leave</span></div>
+  <dl><dt>Note</dt><dd>Marked “temporary workaround until Phase2 yell gets fixed”. It works and is guarded against repeats. Leave it until the server yell is confirmed fixed.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F5</div><div>
+  <h4>RaidOfficer: “unknownyet” addon guard</h4>
+  <div class="meta"><span class="pill">RaidOfficer.lua:74</span><span class="pill">fix with B8</span></div>
+  <dl><dt>Note</dt><dd>The author never learned the other addon’s name, so the guard never matches.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F6</div><div>
+  <h4>Grizikil: yell trigger that’s never used</h4>
+  <div class="meta"><span class="pill">Grizikil.lua:33</span><span class="pill">wire up or remove</span></div>
+  <dl><dt>Note</dt><dd><code>trigger_yellSmt</code> (“You-you-you no defeat me…”) is translated but not registered or matched. It was probably meant as a phase or enrage cue. If it is wired up, it must use plain matching, because the hyphens are pattern characters.</dd></dl>
+</div></article>
+
+<article class="item"><div class="id">F7</div><div>
+  <h4>Disabled wipe sync</h4>
+  <div class="meta"><span class="pill">Core.lua:713–718, 1723–1726</span><span class="pill">leave</span></div>
+  <dl><dt>Note</dt><dd>Sending a wipe to the raid was commented out deliberately. Wipe detection runs locally every 5 s instead. Leave as is.</dd></dl>
+</div></article>
+</section>
+
+<section id="options">
+<h2>Options &amp; slash commands</h2>
+<p>Built with the classicapi-options-panel kit in item O15.</p>
+<div class="callout"><p><strong>Custom bars stay.</strong> The Custom Bars page gets two text boxes, Global and Local, each with a Start button, taking the same <code>&lt;seconds&gt; &lt;bar text&gt;</code> input as now. Global stays greyed out unless you are raid leader or assistant. <code>/bwcb</code>, <code>/bwlcb</code> and the <code>BWCB()</code> / <code>BWLCB()</code> macro functions don’t change, so existing macros keep working.</p></div>
+<ul class="tight">
+  <li><strong>BigWigs (root page):</strong> Enable BigWigs, Minimap button, Sound channel (O11). Buttons: Edit Layout, Reset running modules, Test, Optimise for healer, Reload UI.</li>
+  <li><strong>Plugins:</strong> one page per plugin with options (Bars, Messages, Sounds, Colors, Proximity, Warning Sign, Raid Icons, Boss Block, Common Auras, Range, Farclip and the rest), generated from each plugin’s table.</li>
+  <li><strong>Bosses:</strong> one page per zone (Molten Core, BWL, Naxxramas, Karazhan…), with a section per boss holding its toggles. Load-on-demand zones appear when loaded.</li>
+  <li><strong>Extras:</strong> external modules such as Zombie Food and Respawn Timers.</li>
+</ul>
+<p><strong>Minimap button:</strong> built from the skill’s template. It keeps the current <code>Icons\core-enabled</code> icon, rounded with <code>SetMask</code>, under the gold tracking border. Clicking opens the options and dragging moves it. Its position migrates from <code>BigWigsFubarDB</code>’s <code>minimapPosition</code>. The FuBar menu’s shift- and alt-click shortcuts move onto the root page as buttons.</p>
+<div class="callout"><p><strong>Minimap menu stays.</strong> The button uses the same icon texture as now, without Ace or FuBar. Right-click opens a small menu built with the game’s <code>UIDropDownMenu</code>. It keeps the <strong>Test</strong> options (local, sync and voice test) and <strong>Enable / Disable BigWigs</strong>, alongside a link to the full options pages.</p></div>
+<p><strong>Slash commands kept:</strong> <code>/bw</code> and <code>/bigwigs</code> (still AceConsole, for typed commands; with no arguments they open the options page), <code>/frbuff</code>, the custom bar commands and the pull timer. No new commands.</p>
+</section>
+
+<section id="libraries">
+<h2>Libraries</h2>
+<p>No Ace3 libraries are present. Other Ace2 addons you run embed some of the same libraries, so removing them here makes BigWigs simpler but may not save memory.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Library</th><th>Used for</th><th>Verdict</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>Babble-Spell-2.3 (524 KB)</td><td>About 40 spell names in CommonAuras, CombatAnnouncement, SpellRequests</td><td class="v v-remove">Remove</td><td>O8; names from <code>GetSpellInfo(id)</code></td></tr>
+<tr><td>SpellStatusV2-2.0</td><td>Your own cast detection (cooldown tracking, mage portals)</td><td class="v v-remove">Remove</td><td>O8</td></tr>
+<tr><td>SpellCache-1.0, Deformat-2.0</td><td>Only SpellStatusV2 and Gratuity need them</td><td class="v v-remove">Remove</td><td>O8 + O9</td></tr>
+<tr><td>SpecialEvents-Aura-2.0, RosterLib-2.0, Gratuity-2.0</td><td>Dazed detection in ZombieFood</td><td class="v v-remove">Remove</td><td>O9</td></tr>
+<tr><td>FuBarPlugin-2.0</td><td>Minimap icon and menu</td><td class="v v-replace">Replace</td><td>O15 minimap button</td></tr>
+<tr><td>Tablet-2.0, Dewdrop-2.0</td><td>FuBar menu, version and resist windows</td><td class="v v-replace">Replace</td><td>O15 + O16</td></tr>
+<tr><td>AceHook-2.1</td><td>Suppressing boss chat (BossBlock, RaidWarn) and RaidIcon’s chat markers</td><td class="v v-keep">Keep</td><td>These must block or rewrite messages, which a post-hook can’t do, and ClassicAPI has no chat filter</td></tr>
+<tr><td>CandyBar-2.2, PaintChips-2.0, Surface-1.0, Compost-2.0</td><td>The timer bars, their colours and textures</td><td class="v v-keep">Keep</td><td>One update loop drives all bars; a rewrite gains little (see Out of scope)</td></tr>
+<tr><td>Babble-Boss-2.2, Babble-Zone-2.2</td><td>Boss and zone names in 98 files</td><td class="v v-keep">Keep</td><td>Module identity and zone triggers depend on them</td></tr>
+<tr><td>AceLibrary, AceOO, AceAddon, AceModuleCore, AceEvent, AceDB, AceLocale, AceConsole, AceDebug</td><td>The module system, 264 scheduled events, the internal event bus, saved profiles for every module, translations, <code>/bw</code></td><td class="v v-keep">Keep</td><td>Replacing them means rewriting all 218 files and migrating every saved setting, for little visible gain</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="order">
+<h2>Suggested order</h2>
+<p>Each batch can be tested in game on its own. Items you skip are dropped from their batch.</p>
+<div class="batch"><h3>Batch 1: gate and quick fixes</h3><div class="ids">Backup · gating · B1 · B2 · B3 · B8 · O11 · O12 · O13</div><p>Low risk, and every later batch can rely on ClassicAPI.</p></div>
+<div class="batch"><h3>Batch 2: auras, GUIDs, proximity</h3><div class="ids">O6 (B4) · O5 · O10 · O14 · O7</div><p>Core helpers that the later batches use.</p></div>
+<div class="batch"><h3>Batch 2a: spoken warnings</h3><div class="ids">O18</div><p>Independent of ClassicAPI apart from the sound channel. Off by default.</p></div>
+<div class="batch"><h3>Batch 3: library clean-up</h3><div class="ids">O8 · O9 · remove the SpellStatus family, Babble-Spell, SpecialEvents-Aura, RosterLib, Gratuity</div><p><strong>Built, awaiting test.</strong> Core relays your own <code>UNIT_SPELLCAST_SUCCEEDED</code> casts as <code>BigWigs_PlayerCast</code>, with the target from <code>UNIT_SPELLCAST_SENT</code>. Spell names come from <code>BigWigs:SpellNameTable</code> (English names, or <code>GetSpellInfo(id)</code> on other clients). Zombie Food uses its own small combat-log handler until O1 arrives in batch 5. The raid mark text table moved into Core and is shared by RaidIcon and C’Thun’s map. Spell Requests also lost Babble-Spell. Seven libraries removed.</p></div>
+<div class="batch"><h3>Batch 4: options</h3><div class="ids">O15 · O16 · remove FuBarPlugin, Tablet, Dewdrop</div><p>Its own test pass, because it touches every settings page.</p></div>
+<div class="batch"><h3>Batch 5: combat-log boss modules</h3><div class="ids">O1 · O2 · O3 · O4 (B5) · O17 · F3 · pilots: Lucifron, Ragnaros, Ebonroc, Wyrmguards</div><p>Test in a raid or against a replay before converting more modules.</p></div>
+<div class="batch"><h3>Batch 6: optional</h3><div class="ids">B6 class tokens · F6 Grizikil</div><p>Mechanical changes across many files.</p></div>
+</section>
+
+<section id="tests">
+<h2>Test checklist</h2>
+<h3>After batch 1</h3>
+<ul class="tight">
+  <li>UHD client: BigWigs loads with the lilac “(Requires Classic API)” suffix and no login warning.</li>
+  <li>Standard client (no ClassicAPI): one chat line says BigWigs needs ClassicAPI, nothing errors, and logging in and out leaves your BigWigs settings intact for the UHD client.</li>
+  <li>Change the UI scale in Video Options, then open Edit Layout: all anchors stay where they were.</li>
+  <li>Set effects volume to 0 and run <code>/bw test</code>: the alert sounds still play.</li>
+  <li>A warning icon disappears after its duration.</li>
+</ul>
+<h3>After batch 2</h3>
+<ul class="tight">
+  <li>Proximity window in a raid shows distances, nearest first, and sounds the alarm only inside the module’s range.</li>
+  <li>Echo of Medivh’s aura cancel works; Ezzel’s bars scale with Curse of Tongues even when the boss has 16+ debuffs.</li>
+  <li>Hovering over or nearing a boss nameplate enables its module without targeting it.</li>
+</ul>
+<h3>After batch 3</h3>
+<ul class="tight">
+  <li>Shield Wall, Last Stand, Fear Ward and Challenging Shout bars appear for the raid, with the right target name.</li>
+  <li>A mage portal cast announces; a cancelled cast doesn’t.</li>
+  <li>Typing <code>{skull}</code> in raid chat still converts.</li>
+  <li>“Dazed” warnings appear in a boss fight.</li>
+  <li>Combat Announcement (if broadcasting is on) announces a Taunt or Kick with the target’s name and raid mark.</li>
+  <li>Spell Requests still finds your spells and its request and cooldown buttons work.</li>
+  <li>The C’Thun map tooltip shows raid marks.</li>
+</ul>
+<h3>After batch 4</h3>
+<ul class="tight">
+  <li>Every page draws fully and scrolls; each control type changes the setting live and survives <code>/reload</code>.</li>
+  <li>The minimap button keeps its old position and icon, opens the options, drags, and hides from its checkbox.</li>
+  <li>Its right-click menu runs the local, sync and voice tests, and enables and disables BigWigs (the icon changes to match).</li>
+  <li>Version check and resist check windows list results.</li>
+</ul>
+<h3>After batch 5</h3>
+<ul class="tight">
+  <li>Each pilot boss: engage, every timer, resist messages, boss-kill message and module disable match the old module.</li>
+  <li>A raid member on a different BigWigs build still receives your syncs.</li>
+  <li>Wyrmguards: each marked Wyrmguard gets its own bar with the correct mark and school, whoever lands the hits, and the bar goes when that Wyrmguard dies.</li>
+</ul>
+</section>
+
+<section id="out">
+<h2>Out of scope / not recommended</h2>
+<ul class="tight">
+  <li><strong>Replacing Ace2’s core (events, saved data, modules, locales).</strong> It touches every file and every saved setting for little gain.</li>
+  <li><strong>Rewriting CandyBar on <code>statusBar:SetTimerDuration</code>.</strong> One shared update loop already drives all bars, and the bars also draw text countdowns, pauses and emphasis moves that the timer doesn’t cover.</li>
+  <li><strong>Converting all 151 boss modules at once.</strong> Pilot first; convert more on request.</li>
+  <li><strong>Encounter start and end events.</strong> ClassicAPI writes <code>ENCOUNTER_START</code> and <code>ENCOUNTER_END</code> to the log file only; they aren’t Lua events.</li>
+  <li><strong>Chat filters for BossBlock.</strong> ClassicAPI has no message-filter API, so the hooks stay.</li>
+  <li><strong>MageTools event sources.</strong> Version 2 already uses nampower’s structured events, so the gain from moving it is small.</li>
+  <li><strong>Range plugin.</strong> It only sets combat-log range CVars, and works as it is.</li>
+  <li><strong>Ace3.</strong> None present.</li>
+</ul>
+</section>
+
+<footer>Plan file: <code>Interface\AddOns\BigWigs\ClassicAPI-Plan.html</code>. WoW ignores HTML files, so it’s harmless there; delete it or add it to <code>.gitignore</code> when the work is done.</footer>
+</main>
+</div>

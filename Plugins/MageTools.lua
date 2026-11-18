@@ -941,7 +941,7 @@ end
 -- Update self.target based on event version (GUID for V2, name for V1)
 function BigWigsMageTools:UpdateTarget()
 	if self.eventVersion == 2 then
-		local _, guid = UnitExists("target")
+		local guid = UnitGUID("target")
 		if guid then
 			self.target = guid
 		else
@@ -1107,7 +1107,7 @@ function BigWigsMageTools:SetupFrames()
 	t:SetAllPoints(leftbutton)
 	t:SetBlendMode("ADD")
 	leftbutton:SetHighlightTexture(t)
-	leftbuttontext = leftbutton:CreateFontString(nil, "OVERLAY")
+	local leftbuttontext = leftbutton:CreateFontString(nil, "OVERLAY")
 	leftbuttontext:SetFontObject(GameFontHighlight)
 	leftbuttontext:SetText(L["Test"])
 	leftbuttontext:SetAllPoints(leftbutton)
@@ -1143,7 +1143,7 @@ function BigWigsMageTools:SetupFrames()
 	t:SetAllPoints(middlebutton)
 	t:SetBlendMode("ADD")
 	middlebutton:SetHighlightTexture(t)
-	middlebuttontext = middlebutton:CreateFontString(nil, "OVERLAY")
+	local middlebuttontext = middlebutton:CreateFontString(nil, "OVERLAY")
 	middlebuttontext:SetFontObject(GameFontHighlight)
 	middlebuttontext:SetText("Edit")
 	middlebuttontext:SetAllPoints(middlebutton)
@@ -1178,7 +1178,7 @@ function BigWigsMageTools:SetupFrames()
 	t:SetAllPoints(rightbutton)
 	t:SetBlendMode("ADD")
 	rightbutton:SetHighlightTexture(t)
-	rightbuttontext = rightbutton:CreateFontString(nil, "OVERLAY")
+	local rightbuttontext = rightbutton:CreateFontString(nil, "OVERLAY")
 	rightbuttontext:SetFontObject(GameFontHighlight)
 	rightbuttontext:SetText(L["Close"])
 	rightbuttontext:SetAllPoints(rightbutton)
@@ -1231,7 +1231,7 @@ function BigWigsMageTools:RestorePosition()
 	local x = self.db.profile.posx
 	local y = self.db.profile.posy
 
-	if not x or not y then
+	if not x or not y or not self.frames or not self.frames.anchor then
 		return
 	end
 
@@ -1587,7 +1587,7 @@ function BigWigsMageTools:Test1()
 end
 
 function BigWigsMageTools:Test2()
-	events = {
+	local events = {
 		"Relkag 's Scorch crits Heroic Training Dummy for 888 Fire damage.",
 		"Relkag gains 45 Mana from Relkag 's Master of Elements.",
 		"Heroic Training Dummy is afflicted by Ignite (1).",

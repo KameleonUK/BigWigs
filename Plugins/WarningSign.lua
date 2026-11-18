@@ -254,14 +254,15 @@ function BigWigsWarningSign:BigWigs_ShowWarningSign(texturePath, duration, force
 		self.frames.sign:Show()
 		self.db.profile.isVisible = true
 
-		-- initialize the OnUpdate
-		self.frames.sign:SetScript('OnUpdate', function()
-			if GetTime() > c.endTime then
-				c.texture = "";
-				self.frames.sign:Hide()
-				self.db.profile.isVisible = false
-				self.frames.sign:SetScript('OnUpdate', nil)
-			end
+		-- one cancellable timer per shown icon, instead of checking GetTime() on every frame
+		if self.hideTimer then
+			self.hideTimer:Cancel()
+		end
+		self.hideTimer = C_Timer.NewTimer(duration, function()
+			self.hideTimer = nil
+			c.texture = "";
+			self.frames.sign:Hide()
+			self.db.profile.isVisible = false
 		end)
 	end
 end
@@ -272,10 +273,13 @@ function BigWigsWarningSign:BigWigs_HideWarningSign(texturePath, forceHide)
 	if forceHide or c.texture == texturePath then
 		c.texture = "";
 
+		if self.hideTimer then
+			self.hideTimer:Cancel()
+			self.hideTimer = nil
+		end
 		if self.frames and self.frames.sign then
 			self.frames.sign:Hide()
 			self.db.profile.isVisible = false
-			self.frames.sign:SetScript('OnUpdate', nil)
 		end
 	end
 end
@@ -311,7 +315,7 @@ end
 function BigWigsWarningSign:CreateAnchor()
 	local f, t
 
-	f, _, _ = GameFontNormal:GetFont()
+	f = GameFontNormal:GetFont()
 
 	self.frames = {}
 	self.frames.anchor = CreateFrame("Frame", "BigWigsWarningSignAnchor", UIParent)
@@ -450,15 +454,23 @@ function BigWigsWarningSign:CreateAnchor()
 	self.frames.rightbuttontext:SetText(L["Close"])
 	self.frames.rightbuttontext:SetAllPoints(self.frames.rightbutton)
 
-	local x = self.db.profile.posx
-	local y = self.db.profile.posy
-	if x and y then
-		local s = self.frames.anchor:GetEffectiveScale()
-		self.frames.anchor:ClearAllPoints()
-		self.frames.anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
-	else
+	if not self:RestorePosition() then
 		self:ResetPosition()
 	end
+end
+
+-- Places the anchor at its saved position; returns nil when there is none to restore.
+-- Also called by the core on UI_SCALE_CHANGED.
+function BigWigsWarningSign:RestorePosition()
+	local x = self.db.profile.posx
+	local y = self.db.profile.posy
+	if not x or not y or not self.frames or not self.frames.anchor then
+		return
+	end
+	local s = self.frames.anchor:GetEffectiveScale()
+	self.frames.anchor:ClearAllPoints()
+	self.frames.anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	return true
 end
 
 function BigWigsWarningSign:CreateWarningSignFrame()

@@ -479,9 +479,7 @@ local syncName = {
 	bloodTap = "KelBloodTap" .. module.revision,
 }
 
-module.proximityCheck = function(unit)
-	return CheckInteractDistance(unit, 2)
-end
+module.proximityRange = 11 -- yards, checked with UnitDistanceSquared by the Proximity plugin
 module.proximitySilent = true
 
 local speedRod = false

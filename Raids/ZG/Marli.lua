@@ -1,5 +1,6 @@
 
 local module, L = BigWigs:ModuleDeclaration("High Priestess Mar'li", "Zul'Gurub")
+local watchForSpawn = nil
 
 module.revision = 30078
 module.enabletrigger = module.translatedName

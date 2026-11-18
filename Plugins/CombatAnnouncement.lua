@@ -13,9 +13,17 @@
 
 local name = "Combat Announcement"
 local L = AceLibrary("AceLocale-2.2"):new("BigWigs" .. name)
-local BS = AceLibrary("Babble-Spell-2.3")
-
-local spellStatus = AceLibrary("SpellStatusV2-2.0")
+-- Rank 1 IDs; every rank has the same name
+local BS = BigWigs:SpellNameTable({
+	["Pummel"] = 6552, ["Shield Bash"] = 72, ["Taunt"] = 355, ["Mocking Blow"] = 694,
+	["Innervate"] = 29166, ["Disarm"] = 676, ["Challenging Shout"] = 1161,
+	["Intimidating Shout"] = 5246, ["Concussion Blow"] = 12809, ["Kick"] = 1766,
+	["Kidney Shot"] = 408, ["Cheap Shot"] = 1833, ["Blind"] = 2094, ["Gouge"] = 1776,
+	["Pounce"] = 9005, ["Bash"] = 5211, ["Growl"] = 6795, ["Hibernate"] = 2637,
+	["Entangling Roots"] = 339, ["Scatter Shot"] = 19503, ["Tranquilizing Shot"] = 19801,
+	["Counterspell"] = 2139, ["Hammer of Justice"] = 853, ["Psychic Scream"] = 8122,
+	["Earth Shock"] = 8042, ["Death Coil"] = 6789,
+})
 local _, class = UnitClass("player")
 
 ------------------------------
@@ -642,9 +650,16 @@ BigWigsCombatAnnouncement.external = true
 --         Events           --
 ------------------------------
 
-function BigWigsCombatAnnouncement:CastEvent(id, name, rank, fullname, caststart, caststop, castduration, castdelay, activetarget)
+-- Your own successful casts, from Core's UNIT_SPELLCAST_SUCCEEDED relay
+function BigWigsCombatAnnouncement:BigWigs_PlayerCast(spellId, name, targetName)
 	if not BigWigsCombatAnnouncement:IsBroadcasting() then
 		return
+	end
+
+	-- The target's name, plus its raid mark when it is your current target
+	local activetarget = targetName
+	if activetarget and UnitName("target") == activetarget and GetRaidTargetIndex("target") then
+		activetarget = activetarget .. " " .. RaidMarkerIndexToText[GetRaidTargetIndex("target")]
 	end
 
 	for optionname, translatedname in pairs(SpellTranslation) do
@@ -663,11 +678,8 @@ function BigWigsCombatAnnouncement:CastEvent(id, name, rank, fullname, caststart
 end
 
 function BigWigsCombatAnnouncement:OnEnable()
-	self:RegisterEvent("SpellStatusV2_SpellCastInstant", "CastEvent")
-
-	if class == "DRUID" then
-		self:RegisterEvent("SpellStatusV2_SpellCastCastingFinish", "CastEvent")
-	end
+	-- Instants and cast-time spells (Hibernate, Entangling Roots) both arrive once they succeed
+	self:RegisterEvent("BigWigs_PlayerCast")
 end
 
 function BigWigsCombatAnnouncement:IsBroadcasting()

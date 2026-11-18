@@ -143,9 +143,7 @@ local syncName = {
 }
 
 -- Proximity Plugin
-module.proximityCheck = function(unit)
-	return CheckInteractDistance(unit, 2)
-end
+module.proximityRange = 11 -- yards, checked with UnitDistanceSquared by the Proximity plugin
 module.proximitySilent = true
 
 -- module functions
@@ -221,23 +219,20 @@ function module:IncantagosCastEvent(casterGuid, targetGuid, eventType, spellId, 
 end
 
 function module:CheckBossHealth()
-	for i = 1, GetNumRaidMembers() do
-		local targetString = "raid" .. i .. "target"
-		local targetName = UnitName(targetString)
+	-- FindUnitByName also finds the boss by nameplate or raid mark when nobody targets it
+	local unit = BigWigs:FindUnitByName(module.translatedName)
+	if not unit then
+		return
+	end
 
-		if targetName == module.translatedName then
-			local health = UnitHealth(targetString)
-			local healthMax = UnitHealthMax(targetString)
+	local health = UnitHealth(unit)
+	local healthMax = UnitHealthMax(unit)
+	if health > 0 and healthMax > 0 then
+		self.bossHealth = math.ceil((health / healthMax) * 100)
 
-			if health > 0 and healthMax > 0 then
-				self.bossHealth = math.ceil((health / healthMax) * 100)
-
-				if self.bossHealth <= 38 and not self.curseWarned then
-					self:Message(L["msg_curseWarning"], "Important", nil, "Alarm")
-					self.curseWarned = true
-				end
-				break
-			end
+		if self.bossHealth <= 38 and not self.curseWarned then
+			self:Message(L["msg_curseWarning"], "Important", nil, "Alarm")
+			self.curseWarned = true
 		end
 	end
 end
@@ -395,7 +390,7 @@ function module:Test()
 		{ time = 6, func = function()
 			print("Test: simulate cast event")
 			if SUPERWOW_VERSION then
-				local _, guid = UnitExists("player")
+				local guid = UnitGUID("player")
 				module:IncantagosCastEvent(nil, guid, "CHANNEL", 51187, 0)
 			end
 		end },

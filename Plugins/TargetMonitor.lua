@@ -56,6 +56,9 @@ function BigWigsTargetMonitor:ZONE_CHANGED_NEW_AREA()
 		--~~ self:TriggerEvent("BigWigs_Message", L["Target monitoring enabled"], "LtBlue", true, false)
 		self:RegisterEvent("PLAYER_TARGET_CHANGED")
 		self:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+		-- ClassicAPI: a boss's nameplate coming into view enables its module, so nobody has to
+		-- target or mouse over it first (needs enemy nameplates switched on)
+		self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	elseif self.monitoring then
 		self.monitoring = nil
 		--~~ self:TriggerEvent("BigWigs_Message", L["Target monitoring disabled"], "LtBlue", true, false)
@@ -65,7 +68,15 @@ function BigWigsTargetMonitor:ZONE_CHANGED_NEW_AREA()
 		if self:IsEventRegistered("UPDATE_MOUSEOVER_UNIT") then
 			self:UnregisterEvent("UPDATE_MOUSEOVER_UNIT")
 		end
+		if self:IsEventRegistered("NAME_PLATE_UNIT_ADDED") then
+			self:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
+		end
 	end
+end
+
+
+function BigWigsTargetMonitor:NAME_PLATE_UNIT_ADDED(unit)
+	self:TargetCheck(unit)
 end
 
 

@@ -11,9 +11,7 @@ module.toggleoptions = { "mark", "marksounds", "shieldwall", "hpframe", -1,
                          "bosskill", "proximity", -1,
                          "healeronerotate", "healertworotate", "healerthreerotate" }
 -- Proximity Plugin
-module.proximityCheck = function(unit)
-	return CheckInteractDistance(unit, 2)
-end
+module.proximityRange = 11 -- yards, checked with UnitDistanceSquared by the Proximity plugin
 module.proximitySilent = true
 module.defaultDB = {
 	healeronerotate = false,

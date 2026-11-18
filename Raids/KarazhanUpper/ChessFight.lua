@@ -150,7 +150,33 @@ local spellIds = {
 -- Track players afflicted with King's Curse
 local bowed = {}
 
-local baseChatFrameOnEvent = ChatFrame_OnEvent
+-- The /bow throttle wraps ChatFrame_OnEvent once and never unwraps it: putting a saved copy back
+-- later would drop any hook another addon added on top in the meantime. While the module is
+-- disabled, or the option is off, the wrapper passes every message straight through.
+local bowThrottleActive = false
+
+local function InstallBowThrottle(self)
+	if self.bowThrottleInstalled then
+		return
+	end
+	self.bowThrottleInstalled = true
+
+	local origChatFrameOnEvent = ChatFrame_OnEvent
+	ChatFrame_OnEvent = function(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+		-- only throttle OTHER players' /bow emote when we're engaged
+		if bowThrottleActive and self.db.profile.throttlebow and self.engaged and event == "CHAT_MSG_TEXT_EMOTE" then
+			local msg, who = arg1, arg2
+			if who ~= UnitName("player") and msg and string.find(msg, "^.- bow") then
+				local now = GetTime()
+				if bowed[who] and now - bowed[who] < timer.throttlebow then
+					return
+				end
+				bowed[who] = now
+			end
+		end
+		origChatFrameOnEvent(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+	end
+end
 
 function module:OnEnable()
 	self.lastSubservience = 0
@@ -171,33 +197,10 @@ function module:OnEnable()
 		self:ScheduleRepeatingEvent("BishopDebuffScan", self.ScanBishopDebuffs, timer.bishopScan, self)
 	end
 
-	-- install wrapper exactly once
-	if not self.origChatFrameOnEvent and self.db.profile.throttlebow then
-		self.origChatFrameOnEvent = ChatFrame_OnEvent
-
-		ChatFrame_OnEvent = function(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
-			local msg, who = arg1, arg2
-
-			if not self.origChatFrameOnEvent then
-				-- something went wrong, just call the original function
-				baseChatFrameOnEvent(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
-				ChatFrame_OnEvent = baseChatFrameOnEvent
-				return
-			end
-
-			-- only throttle OTHER players’ /bow emote when we’re engaged
-			if self.engaged and event == "CHAT_MSG_TEXT_EMOTE" and who ~= UnitName("player") and string.find(msg, "^.- bow") then
-				local now = GetTime()
-				if not bowed[who] or now - bowed[who] >= timer.throttlebow then
-					bowed[who] = now
-					self.origChatFrameOnEvent(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
-				end
-			else
-				-- everything else goes through as normal
-				self.origChatFrameOnEvent(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
-			end
-		end
+	if self.db.profile.throttlebow then
+		InstallBowThrottle(self)
 	end
+	bowThrottleActive = true
 
 	if SUPERWOW_VERSION then
 		self:RegisterCastEventsForUnitName("Queen", "QueenCastEvent")
@@ -220,11 +223,7 @@ function module:OnSetup()
 end
 
 function module:OnDisable()
-	if self.origChatFrameOnEvent and self.db.profile.throttlebow then
-		-- remove the wrapper
-		ChatFrame_OnEvent = self.origChatFrameOnEvent
-		self.origChatFrameOnEvent = nil
-	end
+	bowThrottleActive = false
 end
 
 function module:OnEngage()
@@ -724,7 +723,7 @@ function module:Test()
 		{ time = 48, func = function()
 			print("Test: King casts Void Zone (Blunder) on player")
 			-- Simulate KingCastEvent with current player as target
-			local _, playerGuid = UnitExists("player")
+			local playerGuid = UnitGUID("player")
 			local kingGuid = "king"
 			module:KingCastEvent(kingGuid, playerGuid, "CAST", spellIds.blunder, 0)
 		end },
@@ -733,7 +732,7 @@ function module:Test()
 		{ time = 50, func = function()
 			print("Test: King casts Void Zone (Blunder) on raid1")
 			-- Simulate KingCastEvent with current player as target
-			local _, playerGuid = UnitExists("raid1")
+			local playerGuid = UnitGUID("raid1")
 			local kingGuid = "king"
 			module:KingCastEvent(kingGuid, playerGuid, "CAST", spellIds.blunder, 0)
 		end },

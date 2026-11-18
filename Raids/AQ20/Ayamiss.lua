@@ -1,5 +1,6 @@
 
 local module, L = BigWigs:ModuleDeclaration("Ayamiss the Hunter", "Ruins of Ahn'Qiraj")
+local p2 = nil -- true once phase 2 has started
 
 module.revision = 30069
 module.enabletrigger = module.translatedName
@@ -91,7 +92,7 @@ self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
-	local p2 = nil
+	p2 = nil
 	self:Bar(L["nextlarva_bar"], timer.larvacd, icon.sacrifice, true, "white")
 end
 

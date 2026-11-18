@@ -181,16 +181,9 @@ end
 function module:CheckDrakeTarget()
 	local drakeTarget = nil
 
-	if UnitName("target") == "Manascale Drake" then
-		drakeTarget = UnitName("targettarget")
-	else
-		-- loop through raid to find someone targeting the drake
-		for i = 1, GetNumRaidMembers() do
-			if UnitName("raid" .. i .. "target") == "Manascale Drake" then
-				drakeTarget = UnitName("raid" .. i .. "targettarget")
-				break
-			end
-		end
+	local unit = BigWigs:FindUnitByName("Manascale Drake")
+	if unit then
+		drakeTarget = UnitName(unit .. "target")
 	end
 
 	if drakeTarget then

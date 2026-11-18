@@ -454,7 +454,7 @@ function module:CheckDebuff()
 			local id = GetPlayerBuff(i,"HARMFUL")
 			tooltip:SetOwner(UIParent, "ANCHOR_NONE");
 			tooltip:SetPlayerBuff(id);
-			buffName = textleft1:GetText();
+			local buffName = textleft1:GetText();
 			tooltip:Hide();
 			if ( buffName and strfind(strlower(buffName), debuff )) then
 				local timeleft = GetPlayerBuffTimeLeft(id)

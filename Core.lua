@@ -892,16 +892,34 @@ function BigWigs:CHAT_MSG_MONSTER_YELL(msg)
 end
 BigWigs:RegisterEvent("CHAT_MSG_MONSTER_YELL")
 
+-- ClassicAPI fires UI_SCALE_CHANGED whenever UIParent gets a new scale: the first time at login,
+-- and when the UI scale or window size changes. Anchor positions are saved in screen units, so each
+-- plugin places its anchors again with the new scale and they stay where the player put them.
+function BigWigs:UI_SCALE_CHANGED()
+	for name, module in self:IterateModules() do
+		if type(module.RestorePosition) == "function" and self:IsModuleActive(module) then
+			module:RestorePosition()
+		end
+	end
+end
+BigWigs:RegisterEvent("UI_SCALE_CHANGED")
+
 function BigWigs:CheckForEngage(module)
 	if module and module:IsBossModule() and not module.engaged then
 		local function IsBossInCombat()
-			local t = module.enabletrigger
+			local trigger = module.enabletrigger
 			local a = module.wipemobs
-			if not t then
+			if not trigger then
 				return false
 			end
-			if type(t) == "string" then
-				t = { t }
+			-- build a local list: adding the wipe mobs to module.enabletrigger itself grew it on every scan
+			local t = {}
+			if type(trigger) == "string" then
+				table.insert(t, trigger)
+			else
+				for _, v in pairs(trigger) do
+					table.insert(t, v)
+				end
 			end
 			if a then
 				if type(a) == "string" then
@@ -1277,6 +1295,11 @@ function BigWigs:OnInitialize()
 	self.version = (self.version or "2.0") .. " |cffff8888r" .. rev .. "|r"
 	--self:RegisterEvent("ADDON_LOADED")
 
+	-- classicapi_check.lua found ClassicAPI missing or too old: stay in standby
+	if BIGWIGS_CLASSICAPI_MISSING then
+		return
+	end
+
 	self.loading = true
 	-- Activate ourselves, or at least try to. If we were disabled during a reloadUI, OnEnable isn't called,
 	-- and self.loading will never be set to something else, resulting in a BigWigs that doesn't enable.
@@ -1284,6 +1307,18 @@ function BigWigs:OnInitialize()
 end
 
 function BigWigs:OnEnable()
+	if BIGWIGS_CLASSICAPI_MISSING then
+		self:ToggleActive(false)
+		return
+	end
+	-- Standby unregisters every core event, including the two registered at file load, so
+	-- register them again each time BigWigs comes out of standby.
+	if not self:IsEventRegistered("CHAT_MSG_MONSTER_YELL") then
+		self:RegisterEvent("CHAT_MSG_MONSTER_YELL")
+	end
+	if not self:IsEventRegistered("UI_SCALE_CHANGED") then
+		self:RegisterEvent("UI_SCALE_CHANGED")
+	end
 	if AceLibrary("AceEvent-2.0"):IsFullyInitialized() then
 		self:AceEvent_FullyInitialized()
 	else
@@ -1812,27 +1847,91 @@ function BigWigs:AddLoDMenu(zonename)
 	end
 end
 
--- Requires Superwow for GetPlayerBuffID
+-- ClassicAPI's aura data carries the spell ID, so this no longer needs SuperWoW's GetPlayerBuffID.
+-- CancelUnitBuff counts in C_UnitAuras order, so both must use the same filter.
 function BigWigs:CancelAuraId(spellId)
-	if not GetPlayerBuffID then
-		self:Print("Superwow required for CancelAuraId")
-	end
-
-	local i = 0
-	while true do
-		local buffIndex = GetPlayerBuff(i, "HELPFUL")
-		i = i + 1
-		if buffIndex == -1 then
-			break
-		end
-		local buffId = GetPlayerBuffID(buffIndex)
-		buffId = (buffId < -1) and (buffId + 65536) or buffId
-		if buffId == spellId then
-			CancelPlayerBuff(buffIndex)
+	local i = 1
+	local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+	while aura do
+		if aura.spellId == spellId then
+			CancelUnitBuff("player", i, "HELPFUL")
 			return true
 		end
+		i = i + 1
+		aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
 	end
 	return false
+end
+
+-- Coloured raid mark names for chat and tooltips (was SpellStatusV2's SpellstatusV2IndexToIcon)
+BigWigs.raidIconText = {
+	[1] = "|cFFF7EF52[Star]|r",
+	[2] = "|cFFE76100[Circle]|r",
+	[3] = "|cFFDE55E7[Diamond]|r",
+	[4] = "|cFF2BD923[Triangle]|r",
+	[5] = "|cFF8FB9D0[Moon]|r",
+	[6] = "|cFF00B9F3[Square]|r",
+	[7] = "|cFFB20A05[X]|r",
+	[8] = "|cFFF1EFE4[Skull]|r",
+}
+
+-- Spell names in the client's language, in place of Babble-Spell. English clients use the English
+-- name as written; other clients look it up from a spell ID (any rank gives the same name).
+local isEnglishClient = GetLocale() == "enUS" or GetLocale() == "enGB"
+function BigWigs:SpellName(english, spellId)
+	if not isEnglishClient and spellId then
+		local localized = GetSpellInfo(spellId)
+		if localized then
+			return localized
+		end
+	end
+	return english
+end
+
+-- A table indexed like Babble-Spell (BS["Fear Ward"]), so plugins keep their lookups. spellIds maps
+-- English names to an ID, used to find the name on non-English clients.
+function BigWigs:SpellNameTable(spellIds)
+	return setmetatable({}, { __index = function(t, english)
+		local name = BigWigs:SpellName(english, spellIds and spellIds[english])
+		rawset(t, english, name)
+		return name
+	end })
+end
+
+-- Your own successful casts, as BigWigs_PlayerCast(spellId, spellName, targetName), in place of
+-- SpellStatusV2's hooks on every cast function. The target name comes from UNIT_SPELLCAST_SENT,
+-- matched to the cast by its castGUID; it is nil for spells cast without a target.
+do
+	local sentTargets = {}
+	local sentCount = 0
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("UNIT_SPELLCAST_SENT")
+	frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+	frame:RegisterEvent("UNIT_SPELLCAST_FAILED")
+	frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+	frame:SetScript("OnEvent", function()
+		if arg1 ~= "player" then
+			return
+		end
+		if event == "UNIT_SPELLCAST_SENT" then
+			-- arg2 target name, arg3 castGUID
+			if sentCount > 20 then
+				sentTargets = {}
+				sentCount = 0
+			end
+			if arg2 and arg2 ~= "" then
+				sentTargets[arg3] = arg2
+				sentCount = sentCount + 1
+			end
+		elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+			-- arg2 castGUID, arg3 spellID, arg4 spellName
+			local target = sentTargets[arg2]
+			sentTargets[arg2] = nil
+			BigWigs:TriggerEvent("BigWigs_PlayerCast", arg3, arg4, target)
+		else
+			sentTargets[arg2] = nil
+		end
+	end)
 end
 
 function BigWigs:CancelAuraTexture(texture)
@@ -1851,21 +1950,6 @@ function BigWigs:CancelAuraTexture(texture)
 	end
 
 	return false
-end
-
--- Virtual Tooltip to scan for strings
-BigWigs.VTT = CreateFrame("GameTooltip", "BigWigsVTT", nil, "GameTooltipTemplate")
-BigWigs.VTT:SetOwner(BigWigsVTT, "ANCHOR_NONE")
-
-function BigWigs:BuffNameByIndex(buffIndex)
-	BigWigsVTT:SetPlayerBuff(buffIndex)
-	
-	local line = getglobal("BigWigsVTTTextLeft1")
-	if line and line:IsVisible() then
-		return line:GetText()
-	else
-		BigWigs.VTT:SetOwner(BigWigsVTT, "ANCHOR_NONE")
-	end
 end
 
 function BigWigs:GetUnitIdByName(name, depth)
@@ -1901,7 +1985,7 @@ function BigWigs:GetGUIDByName(name, depth, ignoredGUIDs)
 	for i = 1, GetNumRaidMembers() do
 		local id = "raid" .. i .. suffix
 		if UnitName(id) == name then
-			local _, targetGUID = UnitExists(id)
+			local targetGUID = UnitGUID(id)
 			if type(ignoredGUIDs) == "table" then
 				for _, excludedGUID in pairs(ignoredGUIDs) do
 					if targetGUID == excludedGUID then
@@ -1917,21 +2001,43 @@ function BigWigs:GetGUIDByName(name, depth, ignoredGUIDs)
 	end
 end
 
-function BigWigs:OffsetGUID(input, offset)
-	local max = 4294967295
-	local prefix, highInput, lowInput = string.sub(input, 1, -17), string.sub(input, -16, -9), string.sub(input, -8)
-
-	local lowOutput = tonumber(lowInput, 16) + offset
-	local highOutput = tonumber(highInput, 16)
-	if lowOutput < 0 then
-		lowOutput = lowOutput + max + 1
-		highOutput = highOutput - 1
-	elseif lowOutput > max then
-		lowOutput = lowOutput - max - 1
-		highOutput = highOutput + 1
+-- Finds a visible unit with this name and returns its GUID, which ClassicAPI accepts as a unit
+-- token (UnitHealth(guid), UnitName(guid .. "target")...). Checks the GUID found last time first,
+-- then your target and mouseover, the raid marks, visible nameplates and the raid's targets, so a
+-- boss is found even when nobody targets it. Returns nil when no visible unit has the name.
+local unitGUIDByName = {}
+local function GUIDIfNamed(unit, name)
+	if UnitExists(unit) and UnitName(unit) == name then
+		return UnitGUID(unit)
 	end
-
-	return prefix .. string.format("%08X", highOutput) .. string.format("%08X", lowOutput)
+end
+function BigWigs:FindUnitByName(name)
+	if not name then
+		return
+	end
+	local guid = unitGUIDByName[name]
+	if guid and UnitExists(guid) and UnitName(guid) == name then
+		return guid
+	end
+	guid = GUIDIfNamed("target", name) or GUIDIfNamed("mouseover", name)
+	local i = 1
+	while not guid and i <= 8 do
+		guid = GUIDIfNamed("mark" .. i, name)
+		i = i + 1
+	end
+	i = 1
+	while not guid and i <= 40 do
+		guid = GUIDIfNamed("nameplate" .. i, name)
+		i = i + 1
+	end
+	i = 1
+	local num = GetNumRaidMembers()
+	while not guid and i <= num do
+		guid = GUIDIfNamed("raid" .. i .. "target", name)
+		i = i + 1
+	end
+	unitGUIDByName[name] = guid
+	return guid
 end
 
 function BigWigs:RaidTargetLookup(input, colorize)
@@ -1993,29 +2099,18 @@ function BigWigs:FormatLargeNumber(integer)
 	end
 end
 
+-- ClassicAPI's aura data carries the spell ID, so these no longer depend on SuperWoW's extra
+-- UnitBuff / UnitDebuff returns. The HARMFUL / HELPFUL filters go by each aura's real polarity,
+-- so a debuff that Turtle moves into a buff slot (once all 16 debuff slots are full) still counts.
 function BigWigs:BuffIsPresent(unitId, spellId)
-	if UnitExists(unitId) then
-		local i = 1
-		while UnitBuff(unitId, i) do
-			local _, _, foundId = UnitBuff(unitId, i)
-			if foundId == spellId then
-				return true
-			end
-			i = i + 1
-		end
+	if UnitExists(unitId) and C_UnitAuras.GetUnitAuraBySpellID(unitId, spellId, "HELPFUL") then
+		return true
 	end
 end
 
 function BigWigs:DebuffIsPresent(unitId, spellId)
-	if UnitExists(unitId) then
-		local i = 1
-		while UnitDebuff(unitId, i) do
-			local _, _, _, foundId = UnitDebuff(unitId, i)
-			if foundId == spellId then
-				return true
-			end
-			i = i + 1
-		end
+	if UnitExists(unitId) and C_UnitAuras.GetUnitAuraBySpellID(unitId, spellId, "HARMFUL") then
+		return true
 	end
 end
 

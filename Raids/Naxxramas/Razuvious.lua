@@ -174,16 +174,9 @@ end
 function module:CheckRazuviousTarget()
 	local razuviousTarget = nil
 
-	if UnitName("target") == "Instructor Razuvious" then
-		razuviousTarget = UnitName("targettarget")
-	else
-		-- loop through raid to find someone targeting razuvious
-		for i = 1, GetNumRaidMembers() do
-			if UnitName("raid" .. i .. "target") == "Instructor Razuvious" then
-				razuviousTarget = UnitName("raid" .. i .. "targettarget")
-				break
-			end
-		end
+	local unit = BigWigs:FindUnitByName("Instructor Razuvious")
+	if unit then
+		razuviousTarget = UnitName(unit .. "target")
 	end
 
 	if razuviousTarget then

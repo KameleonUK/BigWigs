@@ -1,5 +1,6 @@
 
 local module, L = BigWigs:ModuleDeclaration("Ossirian the Unscarred", "Ruins of Ahn'Qiraj")
+local element = nil -- current weakness school
 
 module.revision = 30012
 module.enabletrigger = module.translatedName

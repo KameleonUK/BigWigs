@@ -217,7 +217,7 @@ function module:Event(msg)
 		local _, _, cocoonedPlayer, _ = string.find(msg, L["trigger_cocoonGain"])
 		self:Sync(syncName.cocoon .. " " .. cocoonedPlayer)
 	elseif msg == L["trigger_cocoonGainYou"] then
-		cocoonedPlayer = UnitName("Player")
+		local cocoonedPlayer = UnitName("Player")
 		self:Sync(syncName.cocoon .. " " .. cocoonedPlayer)
 	elseif string.find(msg, L["trigger_cocoonFade"]) then
 		local _, _, cocoonedPlayerFade, _ = string.find(msg, L["trigger_cocoonFade"])

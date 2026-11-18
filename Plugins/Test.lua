@@ -28,6 +28,10 @@ L:RegisterTranslations("enUS", function()
 		["Sync test"] = true,
 		["Perform a sync test of BigWigs."] = true,
 		["Testing Sync"] = true,
+		["voice"] = true,
+		["Voice test"] = true,
+		["Play one spoken warning from each group: personal, raid call, phase change and vulnerability."] = true,
+		["Spoken warnings are off. Turn them on under Plugins > Sounds."] = true,
 	}
 end)
 
@@ -109,7 +113,23 @@ BigWigsTest.consoleOptions = {
 				return (not IsRaidLeader() and not IsRaidOfficer())
 			end,
 		},
+		[L["voice"]] = {
+			type = "execute",
+			name = L["Voice test"],
+			desc = L["Play one spoken warning from each group: personal, raid call, phase change and vulnerability."],
+			func = function()
+				BigWigsTest:VoiceTest()
+			end,
+		},
 	}
+}
+
+-- English boss warning texts, one per spoken-warning group, so each group toggle can be checked
+local voiceTestMessages = {
+	{ "Spark on you!", "Personal" },
+	{ "Decurse!", "Urgent" },
+	{ "Phase 2", "Attention" },
+	{ "Vulnerability - Fire", "Positive" },
 }
 
 BigWigsTest.testRunning = false
@@ -167,6 +187,18 @@ function BigWigsTest:BigWigs_StartTest()
 	self:Sync("TestNumber 5")
 
 	BigWigs:Proximity()
+end
+
+-- Sends the warnings through the normal message path, so the sound settings apply as in a fight
+function BigWigsTest:VoiceTest()
+	BigWigs:ToggleActive(true)
+	local profile = BigWigsSound and BigWigsSound.db and BigWigsSound.db.profile
+	if not (profile and profile.sound and profile.voice) then
+		BigWigs:Print(L["Spoken warnings are off. Turn them on under Plugins > Sounds."])
+	end
+	for i, m in ipairs(voiceTestMessages) do
+		self:DelayedMessage((i - 1) * 2.5, m[1], m[2], true)
+	end
 end
 
 function BigWigsTest:BigWigs_StopTest()

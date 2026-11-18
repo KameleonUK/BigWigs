@@ -431,6 +431,7 @@ function BigWigsMessages:BigWigs_Message(text, color, noraidsay, sound, broadcas
 		if self.db.profile.usecolors and type(BigWigsColors) == "table" and type(BigWigsColors.MsgColor) == "function" then
 			color = BigWigsColors:MsgColor(color)
 		end
+		local _
 		_, r, g, b = paint:GetRGBPercent(color or "white")
 	end
 
@@ -471,7 +472,7 @@ end
 function BigWigsMessages:SetupFrames()
 	local f, t
 
-	f, _, _ = GameFontNormal:GetFont()
+	f = GameFontNormal:GetFont()
 
 	self.frames = {}
 	self.frames.anchor = CreateFrame("Frame", "BigWigsMessageAnchor", UIParent)
@@ -634,7 +635,7 @@ function BigWigsMessages:RestorePosition()
 	local x = self.db.profile.posx
 	local y = self.db.profile.posy
 
-	if not x or not y then
+	if not x or not y or not self.frames.anchor then
 		return
 	end
 

@@ -334,7 +334,7 @@ end
 function BigWigsRaidIcon:StickySetRaidTarget(unit, index)
 	-- skull mark
 	if index == 8 then
-		local _, guid = UnitExists(unit)
+		local guid = UnitGUID(unit)
 		if guid then
 			self:TriggerEvent("BigWigs_SendSync", "BWCAAF " .. guid)
 		end
@@ -348,14 +348,14 @@ end
 
 function BigWigsRaidIcon:ConvertRaidMarkers(msg, chatType, language, channel)
 	if self.db.profile.chat then
-		msg = string.gsub(msg, "{star}", SpellstatusV2IndexToIcon[1])
-		msg = string.gsub(msg, "{circle}", SpellstatusV2IndexToIcon[2])
-		msg = string.gsub(msg, "{diamond}", SpellstatusV2IndexToIcon[3])
-		msg = string.gsub(msg, "{triangle}", SpellstatusV2IndexToIcon[4])
-		msg = string.gsub(msg, "{moon}", SpellstatusV2IndexToIcon[5])
-		msg = string.gsub(msg, "{square}", SpellstatusV2IndexToIcon[6])
-		msg = string.gsub(msg, "{cross}", SpellstatusV2IndexToIcon[7])
-		msg = string.gsub(msg, "{skull}", SpellstatusV2IndexToIcon[8])
+		msg = string.gsub(msg, "{star}", BigWigs.raidIconText[1])
+		msg = string.gsub(msg, "{circle}", BigWigs.raidIconText[2])
+		msg = string.gsub(msg, "{diamond}", BigWigs.raidIconText[3])
+		msg = string.gsub(msg, "{triangle}", BigWigs.raidIconText[4])
+		msg = string.gsub(msg, "{moon}", BigWigs.raidIconText[5])
+		msg = string.gsub(msg, "{square}", BigWigs.raidIconText[6])
+		msg = string.gsub(msg, "{cross}", BigWigs.raidIconText[7])
+		msg = string.gsub(msg, "{skull}", BigWigs.raidIconText[8])
 	end
 	self.hooks["SendChatMessage"](msg, chatType, language, channel)
 end

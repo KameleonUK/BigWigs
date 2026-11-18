@@ -4,10 +4,13 @@ https://github.com/xorann/BigWigs
 
 This is a small plugin to show which raid members are in close range. This is useful for encounters like C'Thun.
 Boss modules can override the following properties:
-module.proximityCheck = function(unit) return CheckInteractDistance(unit, 3) end
+module.proximityRange = 10
 module.proximitySilent = true
 
-module.proximityCheck defines the function to use for the range check. The CheckInteractDistance function has four possible input values for different ranges: 1=10(?) yards; 2=11.11 yards; 3=9.9 yards; 4=28 yards
+module.proximityRange is the range in yards (default 11). The distance comes from ClassicAPI's UnitDistanceSquared,
+and the window lists the nearest players first with their distance.
+module.proximityCheck = function(unit) ... end still works for older modules that test range themselves; it is
+only used when proximityRange is not set, and no distances are shown then.
 module.proximitySilent allows you to configure whether a warning sound should be played, whenever a raid member is too close
 --]]
 
@@ -29,6 +32,7 @@ local tooClose = {} -- List of players who are too close.
 local tooClose2 = {} -- List of players who are too close over 5
 local hasDebuff = {} -- List of players who have the debuff.
 local debuffTexture = nil
+local debuffActive = false -- true while a debuff list is shown instead of proximity
 
 local OnOptionToggled = nil -- Function invoked when the proximity option is toggled on a module.
 
@@ -409,9 +413,27 @@ function BigWigsProximity:PlayerCanChain()
 	end
 end
 
-local function proximityCheck(unit)
-	return CheckInteractDistance(unit, 3)
+local defaultProximityRange = 11 -- yards; matches the old CheckInteractDistance(unit, 2) check
+local nearby = {} -- reused every update: {dist, unit, index}
+local function ByDistance(a, b)
+	return a.dist < b.dist
 end
+
+-- Finds a debuff by its icon in ClassicAPI's aura list. The HARMFUL filter goes by each aura's
+-- real polarity, so debuffs that Turtle moves into buff slots (past 16 debuffs) are found too.
+local function FindDebuffByIcon(unit, texture)
+	local wanted = string.lower(texture)
+	local i = 1
+	local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+	while aura do
+		if aura.icon and string.lower(aura.icon) == wanted then
+			return aura
+		end
+		i = i + 1
+		aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+	end
+end
+
 function BigWigsProximity:UpdateProximity()
 	--mod.proximityCheck = function( unit ) return CheckInteractDistance( unit, 3 ) end
 
@@ -425,29 +447,63 @@ function BigWigsProximity:UpdateProximity()
 	for k in pairs(tooClose2) do
 		tooClose2[k] = nil
 	end
-	tooClose = {}
-	tooClose2 = {}
 
-	local num = GetNumRaidMembers()
-	local func = function(unit)
-		return CheckInteractDistance(unit, 2)
-	end -- 1=10(?) yards; 2=11.11 yards; 3=9.9 yards; 4=28 yards
-	if activeModule and type(activeModule.proximityCheck) == "function" then
-		func = activeModule.proximityCheck
+	-- ClassicAPI's UnitDistanceSquared gives the real distance, so modules set a range in yards
+	-- (module.proximityRange) and the list shows the nearest players first with their distance.
+	-- A module that still supplies its own proximityCheck function keeps working, without distances.
+	local range = defaultProximityRange
+	local check = nil
+	if activeModule then
+		if type(activeModule.proximityRange) == "number" then
+			range = activeModule.proximityRange
+		elseif type(activeModule.proximityCheck) == "function" then
+			check = activeModule.proximityCheck
+		end
 	end
+	local rangeSq = range * range
 
-	for i = 1, num do
-		local name, _, subgroup = GetRaidRosterInfo(i)
+	local count = 0
+	for i = 1, GetNumRaidMembers() do
 		local unit = "raid" .. i
 		if UnitExists(unit) and not UnitIsDeadOrGhost(unit) and not UnitIsUnit(unit, "player") then
-			--if CheckInteractDistance(unit, 2) then -- 1=28 yards; 2=11.11 yards; 3=9.9 yards
-			if func(unit) then
-				if tablelength(tooClose) < 5 then
-					table.insert(tooClose, string.sub(tostring(coloredNames[unit]), 1, 20) .. "|r G" .. subgroup)
-				elseif tablelength(tooClose2) < 5 then
-					table.insert(tooClose2, string.sub(tostring(coloredNames[unit]), 1, 20) .. "|r G" .. subgroup)
+			local dist = nil
+			if check then
+				if check(unit) then
+					dist = -1
+				end
+			else
+				local distSq, checked = UnitDistanceSquared(unit)
+				if checked and distSq <= rangeSq then
+					dist = math.sqrt(distSq)
 				end
 			end
+			if dist then
+				count = count + 1
+				local entry = nearby[count]
+				if not entry then
+					entry = {}
+					nearby[count] = entry
+				end
+				entry.dist = dist
+				entry.unit = unit
+				entry.index = i
+			end
+		end
+	end
+	table.setn(nearby, count)
+	table.sort(nearby, ByDistance)
+
+	for n = 1, math.min(count, 10) do
+		local entry = nearby[n]
+		local _, _, subgroup = GetRaidRosterInfo(entry.index)
+		local text = string.sub(tostring(coloredNames[entry.unit]), 1, 20) .. "|r G" .. tostring(subgroup)
+		if entry.dist >= 0 then
+			text = text .. string.format(" |cffaaaaaa%dy|r", math.floor(entry.dist + 0.5))
+		end
+		if n <= 5 then
+			table.insert(tooClose, text)
+		else
+			table.insert(tooClose2, text)
 		end
 	end
 
@@ -570,15 +626,23 @@ function BigWigsProximity:SetupFrames()
 
 	anchor = frame
 
-	local x = self.db.profile.posx
-	local y = self.db.profile.posy
-	if x and y then
-		local s = anchor:GetEffectiveScale()
-		anchor:ClearAllPoints()
-		anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
-	else
+	if not self:RestorePosition() then
 		self:ResetAnchor()
 	end
+end
+
+-- Places the anchor at its saved position; returns nil when there is none to restore.
+-- Also called by the core on UI_SCALE_CHANGED.
+function BigWigsProximity:RestorePosition()
+	local x = self.db.profile.posx
+	local y = self.db.profile.posy
+	if not x or not y or not anchor then
+		return
+	end
+	local s = anchor:GetEffectiveScale()
+	anchor:ClearAllPoints()
+	anchor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / s, y / s)
+	return true
 end
 
 function BigWigsProximity:ResetAnchor()
@@ -659,24 +723,13 @@ function BigWigsProximity:UpdateDebuff()
 	for k in pairs(hasDebuff) do
 		hasDebuff[k] = nil
 	end
-	hasDebuff = {}
 
-	local num = GetNumRaidMembers()
-
-	for i = 1, num do
-		local name = GetRaidRosterInfo(i)
+	for i = 1, GetNumRaidMembers() do
 		local unit = "raid" .. i
 		if UnitExists(unit) and not UnitIsDeadOrGhost(unit) then
-			for a = 1, 16 do
-				local t, c = UnitDebuff(unit, a);
-				if (t == nil) then
-					break ;
-				end ;
-				if (t == debuffTexture)
-				then
-					table.insert(hasDebuff, tostring(coloredNames[unit]) .. "|r (" .. c .. " stacks)")
-					break ;
-				end
+			local aura = FindDebuffByIcon(unit, debuffTexture)
+			if aura then
+				table.insert(hasDebuff, tostring(coloredNames[unit]) .. "|r (" .. (aura.applications or 1) .. " stacks)")
 			end
 		end
 		if tablelength(hasDebuff) > 4 then

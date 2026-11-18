@@ -358,9 +358,7 @@ local syncName = {
 	firstStomachTentacleDead = "CThunFleshTentacleDead2" .. module.revision,
 }
 
-module.proximityCheck = function(unit)
-	return CheckInteractDistance(unit, 2)
-end
+module.proximityRange = 11 -- yards, checked with UnitDistanceSquared by the Proximity plugin
 module.proximitySilent = false
 
 local doCheckForWipe = false
@@ -1024,7 +1022,7 @@ function UpdateCthunMap()
 			CthunMapUnitIcon(i)
 			if MouseIsOver(cthunmap.map.unit[i]) and GetRaidRosterInfo(i) ~= UnitName("player") then
 				if GetRaidTargetIndex("raid" .. i) then
-					tooltipText = tooltipText .. GetRaidRosterInfo(i) .. SpellstatusV2IndexToIcon[GetRaidTargetIndex("raid" .. i)] .. "\n"
+					tooltipText = tooltipText .. GetRaidRosterInfo(i) .. BigWigs.raidIconText[GetRaidTargetIndex("raid" .. i)] .. "\n"
 				else
 					tooltipText = tooltipText .. GetRaidRosterInfo(i) .. "\n"
 				end

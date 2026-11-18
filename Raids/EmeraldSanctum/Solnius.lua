@@ -1,5 +1,6 @@
 
 local module, L = BigWigs:ModuleDeclaration("Solnius", "Emerald Sanctum")
+local isImmune = nil -- true once the immune phase sync was sent
 
 module.revision = 30029
 module.enabletrigger = module.translatedName

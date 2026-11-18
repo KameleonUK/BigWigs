@@ -1,9 +1,36 @@
 local name = "Common Auras"
 local L = AceLibrary("AceLocale-2.2"):new("BigWigs" .. name)
-local BS = AceLibrary("Babble-Spell-2.3")
+local BS = BigWigs:SpellNameTable({
+	["Fear Ward"] = 6346,
+	["Shield Wall"] = 871,
+	["Last Stand"] = 12975,
+	["Challenging Shout"] = 1161,
+	["Challenging Roar"] = 5209,
+	["Divine Intervention"] = 19752,
+	["Gift of Life"] = 23725,
+})
+local playerClass = nil -- class token, set in OnEnable
 
-local spellStatus = nil
-local has_superwow = SUPERWOW_STRING or SetAutoloot
+-- Sent in English so every client reads the zone; Turtle's own portals are matched by name instead
+local portalSpells = {
+	[10059] = "Portal: Stormwind",
+	[11416] = "Portal: Ironforge",
+	[11419] = "Portal: Darnassus",
+	[11417] = "Portal: Orgrimmar",
+	[11418] = "Portal: Undercity",
+	[11420] = "Portal: Thunder Bluff",
+}
+local portalIcons = {
+	["Stormwind"] = "Spell_Arcane_PortalStormWind",
+	["Ironforge"] = "Spell_Arcane_PortalIronForge",
+	["Darnassus"] = "Spell_Arcane_PortalDarnassus",
+	["Orgrimmar"] = "Spell_Arcane_PortalOrgrimmar",
+	["Undercity"] = "Spell_Arcane_PortalUnderCity",
+	["Thunder Bluff"] = "Spell_Arcane_PortalThunderBluff",
+	["Stonard"] = "Spell_Arcane_PortalStonard",
+	["Theramore"] = "Spell_Arcane_PortalTheramore",
+	["Karazhan"] = "Spell_Arcane_PortalUndercity",
+}
 
 local whZone = nil
 local whColor = nil
@@ -463,18 +490,10 @@ function BigWigsCommonAuras:OnEnable()
 	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF")
 	self:RegisterEvent("LOOT_OPENED")
 
-	if UnitClass("player") == "Warrior" or UnitClass("player") == "Druid" or UnitClass("player") == "Priest" or UnitClass("player") == "Shaman" then
-		if has_superwow then
-			self:RegisterEvent("UNIT_CASTEVENT") -- more reliable target info, for instance if you cast without targeting
-		else
-			self:RegisterEvent("SpellStatusV2_SpellCastInstant")
-		end
-	elseif UnitClass("player") == "Mage" then
-		if not spellStatus then
-			spellStatus = AceLibrary("SpellStatusV2-2.0")
-		end
-		self:RegisterEvent("SpellStatusV2_SpellCastCastingFinish")
-		self:RegisterEvent("SpellStatusV2_SpellCastFailure")
+	local _
+	_, playerClass = UnitClass("player")
+	if playerClass == "WARRIOR" or playerClass == "DRUID" or playerClass == "PRIEST" or playerClass == "SHAMAN" or playerClass == "MAGE" then
+		self:RegisterEvent("BigWigs_PlayerCast")
 	end
 
 	local throttle_delta = 0.4
@@ -498,18 +517,20 @@ function BigWigsCommonAuras:OnEnable()
 	self:TriggerEvent("BigWigs_ThrottleSync", "BWCAAQ40ARTIFACT", 60) -- Artifact
 end
 
--- equip your spellcasts with their target
-function BigWigsCommonAuras:UNIT_CASTEVENT(caster,target,action,spell_id,cast_time)
-	if not (action == "CAST" and UnitIsUnit(caster,"player")) then return end
+-- Your own successful casts (Core's UNIT_SPELLCAST_SUCCEEDED relay). A portal only gets here once
+-- its cast completes, so a cancelled or interrupted portal never announces.
+function BigWigsCommonAuras:BigWigs_PlayerCast(spellId, sName, targetName)
+	if playerClass == "MAGE" then
+		local portal = portalSpells[spellId]
+		if not portal and sName and string.find(sName, L["Portal"]) then
+			portal = sName
+		end
+		if portal then
+			self:TriggerEvent("BigWigs_SendSync", "BWCAP " .. portal)
+		end
+		return
+	end
 
-	-- this technically false-postives on cast completions but it shouldn't matter for our purpose
-	local name,rank = SpellInfo(spell_id)
-	local fullname = rank == "" and name or format("%s(%s)",name,rank)
-	self:SpellStatusV2_SpellCastInstant(spell_id, name, rank, fullname, cast_time, nil, nil, nil, target and UnitName(target))
-end
-
-function BigWigsCommonAuras:SpellStatusV2_SpellCastInstant(sId, sName, sRank, sFullName, sCastTime, sStopTime, sDuration, sDelay, target)
-	local targetName = target
 	if sName == BS["Fear Ward"] then
 		if not targetName then
 			if UnitExists("target") and UnitIsPlayer("target") and not UnitIsEnemy("target", "player") then
@@ -549,7 +570,7 @@ function BigWigsCommonAuras:SpellStatusV2_SpellCastInstant(sId, sName, sRank, sF
 end
 
 function BigWigsCommonAuras:CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS(msg)
-	if string.find(msg, BS["Gift of Life"]) and (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin") then
+	if string.find(msg, BS["Gift of Life"]) and (playerClass == "WARRIOR" or playerClass == "DRUID" or playerClass == "PALADIN") then
 		self:TriggerEvent("BigWigs_SendSync", "BWCALG")
 	elseif string.find(msg, L["di_trigger"]) then
 		self:TriggerEvent("BigWigs_SendSync", "BWCADI")
@@ -588,28 +609,6 @@ function BigWigsCommonAuras:CHAT_MSG_SPELL_AURA_GONE_SELF(msg)
 	elseif string.find(msg, L["powerinfusion_fades"]) then
 		self:RemoveBar(L["powerinfusion_trigger"])
 	end
-end
-
-function BigWigsCommonAuras:SpellStatusV2_SpellCastCastingFinish(sId, sName, sRank, sFullName, sCastTime)
-	if not string.find(sName, L["Portal"]) then
-		return
-	end
-	local spellCastName = BS:HasReverseTranslation(sName) and BS:GetReverseTranslation(sName) or sName
-	self:ScheduleEvent("bwcaspellcast", self.SpellCast, 0.3, self, spellCastName)
-end
-
-function BigWigsCommonAuras:SpellStatusV2_SpellCastFailure(sId, sName, sRank, sFullName, isActiveSpell, UIEM_Message, CMSFLP_SpellName, CMSFLP_Message)
-	-- do nothing if we are casting a spell but the error doesn't consern that spell, thanks Iceroth.
-	if spellStatus and spellStatus:IsCastingOrChanneling() and not spellStatus:IsActiveSpell(sId, sName) then
-		return
-	end
-	if self:IsEventScheduled("bwcaspellcast") then
-		self:CancelScheduledEvent("bwcaspellcast")
-	end
-end
-
-function BigWigsCommonAuras:SpellCast(sName)
-	self:TriggerEvent("BigWigs_SendSync", "BWCAP " .. sName)
 end
 
 function BigWigsCommonAuras:CHAT_MSG_MONSTER_EMOTE(msg, sender)
@@ -839,7 +838,6 @@ function BigWigsCommonAuras:BigWigs_RecvSync(sync, rest, nick)
 		end, nick)
 
 	elseif self.db.profile.portal and sync == "BWCAP" and rest then
-		rest = BS:HasTranslation(rest) and BS:GetTranslation(rest) or rest
 		local _, _, zone = string.find(rest, L["portal_regexp"])
 		if zone then
 			if zone == "Orgrimmar" or zone == "Thunder Bluff" or zone == "Undercity" or zone == "Stonard" then
@@ -853,15 +851,7 @@ function BigWigsCommonAuras:BigWigs_RecvSync(sync, rest, nick)
 				portalText = "--NEUTRAL-- portal to "
 			end
 			self:TriggerEvent("BigWigs_Message", portalText .. zone, "Attention", false, nil, false)
-			if zone == "Stonard" then
-				self:TriggerEvent("BigWigs_StartBar", self, rest, timer.portal, L["iconPrefix"] .. "Spell_Arcane_PortalStonard", true, portalColor)
-			elseif zone == "Theramore" then
-				self:TriggerEvent("BigWigs_StartBar", self, rest, timer.portal, L["iconPrefix"] .. "Spell_Arcane_PortalTheramore", true, portalColor)
-			elseif zone == "Karazhan" then
-				self:TriggerEvent("BigWigs_StartBar", self, rest, timer.portal, L["iconPrefix"] .. "Spell_Arcane_PortalUndercity", true, portalColor)
-			else
-				self:TriggerEvent("BigWigs_StartBar", self, rest, timer.portal, BS:GetSpellIcon(rest), true, portalColor)
-			end
+			self:TriggerEvent("BigWigs_StartBar", self, rest, timer.portal, L["iconPrefix"] .. (portalIcons[zone] or "Spell_Arcane_PortalUndercity"), true, portalColor)
 		end
 
 

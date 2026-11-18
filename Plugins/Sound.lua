@@ -96,6 +96,24 @@ L:RegisterTranslations("enUS", function()
 		["default"] = true,
 		["Default only"] = true,
 		["Use only the default sound."] = true,
+		["channel"] = true,
+		["Sound channel"] = true,
+		["Volume slider for alert sounds. Master plays them even when game sound effects are muted."] = true,
+		["voice"] = true,
+		["Spoken warnings"] = true,
+		["Speak boss warnings with the voice lines in Sounds\\Voice, in place of the alert sound. Warnings without a voice line play the alert sound as before."] = true,
+		["voicepersonal"] = true,
+		["Personal warnings"] = true,
+		["Speak warnings aimed at you, such as Spark on you or Don't move."] = true,
+		["voiceraid"] = true,
+		["Raid calls"] = true,
+		["Speak calls for the raid, such as Decurse, Interrupt and Taunt now."] = true,
+		["voicephase"] = true,
+		["Phase changes"] = true,
+		["Speak phase changes, such as Phase two and Air phase soon."] = true,
+		["voicevuln"] = true,
+		["Vulnerabilities"] = true,
+		["Speak boss vulnerabilities, such as Chromaggus' and Ossirian's."] = true,
 	}
 end)
 
@@ -159,7 +177,162 @@ BigWigsSound = BigWigs:NewModule(L["Sounds"])
 BigWigsSound.defaultDB = {
 	defaultonly = false,
 	sound = true,
+	channel = "Master",
+	voice = false,
+	voicepersonal = true,
+	voiceraid = true,
+	voicephase = true,
+	voicevuln = true,
 }
+
+local function VoiceGroupToggle(key, name, desc)
+	return {
+		type = "toggle",
+		name = name,
+		desc = desc,
+		get = function()
+			return BigWigsSound.db.profile[key]
+		end,
+		set = function(v)
+			BigWigsSound.db.profile[key] = v
+		end,
+		disabled = function()
+			return not BigWigsSound.db.profile.voice
+		end,
+	}
+end
+
+-- PlaySound takes no channel, so the default raid warning is played from its file instead
+local raidWarningFile = "Sound\\Interface\\RaidWarning.wav"
+
+-- Spoken warnings. Each rule is { voice file, group, words that must all appear, words that must not },
+-- checked against the lower-cased English warning text; the first rule that fits picks the line,
+-- so specific rules come before general ones. The files are in Sounds\Voice (VoiceLines.csv lists them).
+local voicePath = "Interface\\AddOns\\BigWigs\\Sounds\\Voice\\"
+local voiceGroupOption = { personal = "voicepersonal", raid = "voiceraid", phase = "voicephase", vuln = "voicevuln" }
+local voiceRules = {
+	{ "SparkOnYou", "personal", {"spark on you"}, {} },
+	{ "SparkOnYou", "personal", {"spark attacking you"}, {} },
+	{ "YouAreTheBomb", "personal", {"bomb on you"}, {} },
+	{ "YouAreTheBomb", "personal", {"you are a bomb"}, {} },
+	{ "ChainsOnYou", "personal", {"chains on you"}, {} },
+	{ "StackInMelee", "personal", {"on you", "stack in melee"}, {} },
+	{ "StackWithRanged", "personal", {"on you", "stack with ranged"}, {} },
+	{ "GetOut", "personal", {"mark of the highlord on you"}, {} },
+	{ "MoveAwayFromOthers", "personal", {"on you", "get away from others"}, {} },
+	{ "MoveAwayFromOthers", "personal", {"you have corruption"}, {} },
+	{ "DontMove", "personal", {"you are shackled"}, {} },
+	{ "OutOfTheLava", "personal", {"standing in lava"}, {} },
+	{ "YouAreTanking", "personal", {"you are tanking"}, {} },
+	{ "PositiveCharge", "personal", {"you changed to a positive"}, {} },
+	{ "NegativeCharge", "personal", {"you changed to a negative"}, {} },
+	{ "RedMoon", "personal", {"you have red moon"}, {} },
+	{ "BlueMoon", "personal", {"you have blue moon"}, {} },
+	{ "BowToTheQueen", "personal", {"bow to the queen"}, {} },
+	{ "YouAreCursed", "personal", {"you are cursed"}, {} },
+	{ "FearWardOnYou", "personal", {"you have fear ward"}, {} },
+	{ "PoisonedGetDispelled", "personal", {"you've been poisoned"}, {} },
+	{ "DirtMoundChasing", "personal", {"chasing you"}, {} },
+	{ "LowMana", "personal", {"you have low mana"}, {} },
+	{ "KillNetherwalkers", "personal", {"phase shift on you"}, {} },
+	{ "StopAttacking", "personal", {"stop killing"}, {} },
+	{ "VulnFire", "vuln", {"vulnerability - fire"}, {} },
+	{ "VulnFrost", "vuln", {"vulnerability - frost"}, {} },
+	{ "VulnNature", "vuln", {"vulnerability - nature"}, {} },
+	{ "VulnShadow", "vuln", {"vulnerability - shadow"}, {} },
+	{ "VulnArcane", "vuln", {"vulnerability - arcane"}, {} },
+	{ "VulnFire", "vuln", {"weak to fire"}, {} },
+	{ "VulnFrost", "vuln", {"weak to frost"}, {} },
+	{ "VulnNature", "vuln", {"weak to nature"}, {} },
+	{ "VulnShadow", "vuln", {"weak to shadow"}, {} },
+	{ "VulnArcane", "vuln", {"weak to arcane"}, {} },
+	{ "AirPhaseSoon", "phase", {"air phase soon"}, {} },
+	{ "LandingSoon", "phase", {"lands very soon"}, {} },
+	{ "PhaseFour", "phase", {"phase 4"}, {"soon"} },
+	{ "PhaseThree", "phase", {"phase 3"}, {"soon"} },
+	{ "PhaseTwo", "phase", {"phase 2"}, {"soon"} },
+	{ "PhaseTwo", "phase", {"phase2"}, {"soon"} },
+	{ "DontMove", "raid", {"do not move"}, {} },
+	{ "TranqNow", "raid", {"tranq"}, {"you cast"} },
+	{ "TauntNow", "raid", {"taunt"}, {} },
+	{ "WingBuffetSoon", "raid", {"wing buffet in"}, {} },
+	{ "Decurse", "raid", {"decurse!"}, {} },
+	{ "Decurse", "raid", {"decurse ("}, {} },
+	{ "CleanseDisease", "raid", {"cleanse disease"}, {} },
+	{ "CleanseDisease", "raid", {"cleanse them"}, {} },
+	{ "SoakPoison", "raid", {"soak poison"}, {} },
+	{ "Interrupt", "raid", {"interrupt"}, {} },
+	{ "MindControl", "raid", {"mind control"}, {} },
+	{ "MindControl", "raid", {"mc - dispel"}, {} },
+	{ "Dispel", "raid", {"- dispel"}, {} },
+	{ "Dispel", "raid", {"dispel!"}, {} },
+	{ "Dispel", "raid", {"dispel it"}, {} },
+	{ "Dispel", "raid", {"dispel them"}, {} },
+	{ "Dispel", "raid", {"dispel the"}, {} },
+	{ "Dispel", "raid", {"dispel freeze"}, {} },
+	{ "EnrageSoon", "raid", {"enrage in"}, {} },
+	{ "EnrageSoon", "raid", {"enrages soon"}, {} },
+	{ "EnrageSoon", "raid", {"enrage soon"}, {} },
+	{ "Enraged", "raid", {"enraged"}, {"no longer"} },
+	{ "BerserkSoon", "raid", {"berserk soon"}, {} },
+	{ "BerserkSoon", "raid", {"berserk in"}, {} },
+	{ "Berserk", "raid", {"berserk!"}, {} },
+	{ "Berserk", "raid", {"is berserk"}, {} },
+	{ "Frenzy", "raid", {"frenzy"}, {"fail"} },
+	{ "KillTheTotems", "raid", {"kill totems"}, {} },
+	{ "KillTheAdds", "raid", {"kill the adds"}, {} },
+	{ "KillTheAdds", "raid", {"kill the spawns"}, {} },
+	{ "AddsSoon", "raid", {"adds soon"}, {} },
+	{ "AddsIncoming", "raid", {"fiends incoming"}, {} },
+	{ "AddsIncoming", "raid", {"constructs incoming"}, {} },
+	{ "AddsIncoming", "raid", {"mobs incoming"}, {} },
+	{ "AddsIncoming", "raid", {"ravens incoming"}, {} },
+	{ "AddsIncoming", "raid", {"incoming sons of flame"}, {} },
+	{ "SwitchTargets", "raid", {"switch to"}, {} },
+	{ "SpreadOut", "raid", {"spread"}, {"spreads on"} },
+	{ "VoidZoneMove", "raid", {"void zone"}, {} },
+	{ "MoveFromCloud", "raid", {"cloud", "move"}, {"move grobbulus"} },
+	{ "MoveFromCloud", "raid", {"poison cloud"}, {} },
+	{ "MoveFromCloud", "raid", {"out of the lightning cloud"}, {} },
+	{ "MoveFromConflagrate", "raid", {"conflag"}, {} },
+	{ "DontStandInFront", "raid", {"stand in front"}, {} },
+	{ "DeepBreath", "raid", {"deep breath"}, {} },
+	{ "FearSoon", "raid", {"fear soon"}, {} },
+	{ "Fear", "raid", {"casting fear"}, {} },
+	{ "TeleportSoon", "raid", {"teleport within"}, {} },
+	{ "Teleport", "raid", {"teleport!"}, {} },
+	{ "HealThroughIt", "raid", {"spam heals"}, {} },
+	{ "MeleeRunOut", "raid", {"melee run out"}, {} },
+	{ "RunAway", "raid", {"run away"}, {} },
+	{ "RunAway", "raid", {"run from"}, {} },
+	{ "Move", "raid", {"move!"}, {} },
+	{ "Move", "raid", {" - move"}, {} },
+}
+
+local function FindVoiceLine(text)
+	local low = string.lower(text)
+	for _, rule in ipairs(voiceRules) do
+		local fits = true
+		for _, word in ipairs(rule[3]) do
+			if not string.find(low, word, 1, true) then
+				fits = false
+				break
+			end
+		end
+		if fits then
+			for _, word in ipairs(rule[4]) do
+				if string.find(low, word, 1, true) then
+					fits = false
+					break
+				end
+			end
+		end
+		if fits then
+			return rule[1], rule[2]
+		end
+	end
+end
+
 BigWigsSound.consoleCmd = L["sounds"]
 BigWigsSound.consoleOptions = {
 	type = "group",
@@ -189,6 +362,33 @@ BigWigsSound.consoleOptions = {
 				BigWigsSound.db.profile.defaultonly = v
 			end,
 		},
+		[L["channel"]] = {
+			type = "text",
+			name = L["Sound channel"],
+			desc = L["Volume slider for alert sounds. Master plays them even when game sound effects are muted."],
+			get = function()
+				return BigWigsSound.db.profile.channel
+			end,
+			set = function(v)
+				BigWigsSound.db.profile.channel = v
+			end,
+			validate = { "Master", "SFX", "Ambience", "Music" },
+		},
+		[L["voice"]] = {
+			type = "toggle",
+			name = L["Spoken warnings"],
+			desc = L["Speak boss warnings with the voice lines in Sounds\\Voice, in place of the alert sound. Warnings without a voice line play the alert sound as before."],
+			get = function()
+				return BigWigsSound.db.profile.voice
+			end,
+			set = function(v)
+				BigWigsSound.db.profile.voice = v
+			end,
+		},
+		[L["voicepersonal"]] = VoiceGroupToggle("voicepersonal", L["Personal warnings"], L["Speak warnings aimed at you, such as Spark on you or Don't move."]),
+		[L["voiceraid"]] = VoiceGroupToggle("voiceraid", L["Raid calls"], L["Speak calls for the raid, such as Decurse, Interrupt and Taunt now."]),
+		[L["voicephase"]] = VoiceGroupToggle("voicephase", L["Phase changes"], L["Speak phase changes, such as Phase two and Air phase soon."]),
+		[L["voicevuln"]] = VoiceGroupToggle("voicevuln", L["Vulnerabilities"], L["Speak boss vulnerabilities, such as Chromaggus' and Ossirian's."]),
 	}
 }
 
@@ -210,20 +410,37 @@ function BigWigsSound:BigWigs_Message(text, color, noraidsay, sound, broadcaston
 			return
 		end
 
-		if sounds[sound] and not self.db.profile.defaultonly then
-			PlaySoundFile(sounds[sound])
-		else
-			PlaySound("RaidWarning")
+		if self:PlayVoice(text) then
+			return
 		end
+		self:Play(sound)
+	end
+end
+
+-- Spoken warnings: plays the voice line for this warning text, if the option and its group are on.
+-- Returns true when a voice line played, so the usual alert sound is skipped.
+function BigWigsSound:PlayVoice(text)
+	if not self.db.profile.voice or type(text) ~= "string" then
+		return
+	end
+	local file, group = FindVoiceLine(text)
+	if file and self.db.profile[voiceGroupOption[group]] then
+		PlaySoundFile(voicePath .. file .. ".mp3", self.db.profile.channel or "Master")
+		return true
 	end
 end
 
 function BigWigsSound:BigWigs_Sound(sound)
 	if self.db.profile.sound then
-		if sounds[sound] and not self.db.profile.defaultonly then
-			PlaySoundFile(sounds[sound])
-		else
-			PlaySound("RaidWarning")
-		end
+		self:Play(sound)
 	end
+end
+
+-- ClassicAPI's PlaySoundFile takes a channel; on Master, alerts play even with sound effects muted
+function BigWigsSound:Play(sound)
+	local file = raidWarningFile
+	if sounds[sound] and not self.db.profile.defaultonly then
+		file = sounds[sound]
+	end
+	PlaySoundFile(file, self.db.profile.channel or "Master")
 end
