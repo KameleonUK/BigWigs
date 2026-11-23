@@ -260,7 +260,7 @@ function module:FrenzyGain()
 	
 	lastFrenzy = GetTime()
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:Sound("Info")
 		self:WarningSign(icon.tranq, timer.frenzyDuration)
 	end

@@ -445,7 +445,7 @@ function module:LifeDrain()
 	--lastLifeDrainTime = GetTime()
 	self:Bar(L["bar_lifeDrain"], timer.lifeDrain, icon.lifeDrain, true, color.lifeDrain)
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_lifeDrain"], "Personal", false, nil, false)
 		self:WarningSign(icon.lifeDrain, 0.7)
 		self:Sound("Long")

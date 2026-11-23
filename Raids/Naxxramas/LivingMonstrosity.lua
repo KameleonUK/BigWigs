@@ -77,26 +77,26 @@ function module:Event(msg)
 			self:WarningSign(icon.lightningTotem, 0.7)
 		end
 		if self.db.profile.autotarget then
-			if UnitClass("Player") == "Rogue" then
+			if BigWigs:PlayerClass() == "ROGUE" then
 				TargetByName("Lightning Totem",true)
 				--DEFAULT_CHAT_FRAME:AddMessage("Rogue")
 			end
-			--if UnitClass("Player") == "Paladin" then
+			--if BigWigs:PlayerClass() == "PALADIN" then
 			--	DEFAULT_CHAT_FRAME:AddMessage("Paladin")
 			--end
-			if UnitClass("Player") == "Hunter" then
+			if BigWigs:PlayerClass() == "HUNTER" then
 				TargetByName("Lightning Totem",true)
 				--DEFAULT_CHAT_FRAME:AddMessage("Hunter")
 			end
-			if UnitClass("Player") == "Warrior" then
+			if BigWigs:PlayerClass() == "WARRIOR" then
 				TargetByName("Lightning Totem",true)
 				--DEFAULT_CHAT_FRAME:AddMessage("Warrior")
 			end
-			if UnitClass("Player") == "Mage" then
+			if BigWigs:PlayerClass() == "MAGE" then
 				TargetByName("Lightning Totem",true)
 				--DEFAULT_CHAT_FRAME:AddMessage("Mage")
 			end
-			if UnitClass("Player") == "Warlock" then
+			if BigWigs:PlayerClass() == "WARLOCK" then
 				TargetByName("Lightning Totem",true)
 				--DEFAULT_CHAT_FRAME:AddMessage("Warlock")
 			end

@@ -3,6 +3,7 @@ local victor = AceLibrary("Babble-Boss-2.2")["Lord Victor Nefarius"]
 
 module.revision = 30142
 module.enabletrigger = {"Nefarian", "Lord Victor Nefarius"}
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.toggleoptions = {
 	"mc",
 	"icon",
@@ -93,14 +94,9 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_engage = "Let the games begin!", --CHAT_MSG_MONSTER_YELL
 	bar_mobsSpawn = "Drakonids Spawn",
 	
-	trigger_mcYou = "You are afflicted by Shadow Command", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_mcOther2 = "(.+) %(.+%) is afflicted by Shadow Command", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcOther = "(.+) is afflicted by Shadow Command", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcFade = "Shadow Command fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_mc = (playerClass=="MAGE" and " MC >sheep<") or (playerClass=="WARLOCK" and " MC >fear<") or " MC >target<",
 	msg_mc = " mind controlled!",
 	spell_mc = (playerClass=="MAGE" and "Polymorph") or (playerClass=="WARLOCK" and "Fear") or false,
-	trigger_deadOther = "(.+) dies.", --CHAT_MSG_COMBAT_FRIENDLY_DEATH
 	
 	bar_addCounter = "Drakonids Left",
 	msg_red = "Red Drakonids - Does: Cone Fire Stacking Dot - Resist: Fire",
@@ -121,26 +117,18 @@ L:RegisterTranslations("enUS", function() return {
 	--ShadowFlame 12.5sec after landingStart, lands 0.5-1sec after
 	trigger_landingNow = "BURN! You wretches! BURN!", --CHAT_MSG_MONSTER_YELL 22:14:23.782
 	
-	trigger_shadowFlameCast = "Nefarian begins to cast Shadow Flame.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE - seems to no longer appear in logs since 1.18
 	bar_shadowFlameCast = "Casting Shadow Flame",
 	msg_shadowFlameCast = "Casting Shadow Flame!",
-	trigger_shadowFlameHit = "Nefarian's Shadow Flame hits", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_shadowFlameCd = "Shadow Flame CD",
 	
-	trigger_fear = "Nefarian begins to cast Bellowing Roar.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_fearCd = "Fear CD",
 	bar_fearSoon = "Fear Soon...",
 	bar_fearCast = "Casting Fear!",
 	msg_fearCast = "Casting Fear!",
 	
-	trigger_fearWard = "You gain Fear Ward.", --CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS
-	trigger_fearWardFade = "Fear Ward fades from you.", --CHAT_MSG_SPELL_AURA_GONE_SELF
 	msg_fearWard = "You have Fear Ward!",
 	msg_fearWardFade = "Fear Ward faded",
 	
-	trigger_curseYou = "You are afflicted by Veil of Shadow.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_curseOther = "(.+) is afflicted by Veil of Shadow.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_curseFade = "Veil of Shadow fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_curseCd = "Veil of Shadow CD",
 	bar_curseDur = " Veil of Shadow",
 	msg_curse = " Veil of Shadow - Decurse!",
@@ -185,13 +173,9 @@ L:RegisterTranslations("enUS", function() return {
 	
 	warn_classCall = "YOUR CLASS CALL",
 	
-	trigger_wildPolymorphYou = "You are afflicted by Wild Polymorph.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE --guessing
-	trigger_wildPolymorphOther = "(.+) is afflicted by Wild Polymorph.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE --guessing
-	trigger_wildPolymorphFade = "Wild Polymorph fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER --guessing
 	bar_wildPolymorph = " Sheeped",
 	msg_wildPolymorph = " Sheeped - Dispel!",
 	
-	trigger_corruptedHealing = "afflicted by Corrupted Healing", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE --guessing
 	msg_corruptedHealing = "A Priest's direct heal caused Corrupted Healing!",
 	
 	msg_lowHp = "Nefarian under 25% - Bone Constructs Soon (@ 20%)!",
@@ -199,10 +183,8 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_boneConstructs = "Impossible! Rise my minions! Serve your master once more!", --CHAT_MSG_MONSTER_YELL
 	msg_boneConstructs = "Bone Constructs incoming - AOE!",
 	
-	trigger_tailLash = "Nefarian's Tail Lash hits you", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	msg_tailLash = "Tail Lash hits behind the boss for 30 yards.",
 	
-	trigger_parryYou = "You attack. Nefarian parries.", --CHAT_MSG_COMBAT_SELF_MISSES
 	msg_parryYou = "Nefarian Parried your attack - Stop killing the tank you idiot!",
 } end)
 
@@ -354,9 +336,42 @@ local classCallSyncs = {
 	[syncName.classCall_Warlock] = "WARLOCK",
 	[syncName.classCall_Warrior] = "WARRIOR",
 }
-local spellId = {
-	shadowFlame = 22539,
+-- spell IDs (from the server scripts), with the English name as a fallback match (see RegisterCombatLog in Core.lua)
+local spell = {
+	mc = {22667, "Shadow Command"},
+	shadowFlame = {22539, "Shadow Flame"},
+	fear = {22686, "Bellowing Roar"},
+	fearWard = {6346, "Fear Ward"},
+	curse = {22687, "Veil of Shadow"},
+	wildPolymorph = {23603, "Wild Polymorph"},
+	corruptedHealing = {23402},
+	tailLash = {23364, "Tail Lash"},
 }
+
+-- Each class call puts a debuff on that class's players as Nefarian yells; seeing one is a class call
+-- in any client language, and catches the second class of a double call. Corrupted Healing (23402)
+-- and Wild Polymorph have their own handlers (one handler per spell per module), which also call
+-- InferClassCall.
+local classCallSpell = {
+	[23397] = "WARRIOR", -- Berserk
+	[23398] = "DRUID", -- Involuntary Transformation
+	[23401] = "PRIEST", -- Corrupted Healing
+	[23410] = "MAGE", -- Wild Magic
+	[23414] = "ROGUE", -- Paralyze
+	[23418] = "PALADIN", -- Siphon Blessing
+	[23425] = "SHAMAN", -- Corrupted Totems
+	[23427] = "WARLOCK", -- Summon Infernals
+	[23436] = "HUNTER", -- Corrupt Weapon
+	["Berserk"] = "WARRIOR",
+	["Involuntary Transformation"] = "DRUID",
+	["Corrupted Healing"] = "PRIEST",
+}
+local classCallKeys = {}
+for key in pairs(classCallSpell) do
+	table.insert(classCallKeys, key)
+end
+local drakonidColors = {"Red", "Blue", "Green", "Black", "Bronze"}
+local mcPlayers = {} -- players under Shadow Command, so a death clears their bar and icon
 
 local drakonidsSelfCount = 0
 local drakonidsDead = 0
@@ -383,27 +398,23 @@ function module:OnEnable()
 
 	self:RegisterEvent("PLAYER_TARGET_CHANGED") --drakonid color detection
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_mcYou, trigger_curseYou, trigger_wildPolymorphYou, trigger_corruptedHealing
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_mcOther, trigger_curseOther, trigger_wildPolymorphOther, trigger_corruptedHealing
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_mcOther, trigger_curseOther, trigger_wildPolymorphOther, trigger_corruptedHealing
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event") --trigger_mcOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.mc, "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.mc, "McFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_mcFade, trigger_fearWardFade, trigger_curseFade, trigger_wildPolymorphFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_mcFade, trigger_curseFade, trigger_wildPolymorphFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_mcFade, trigger_curseFade, trigger_wildPolymorphFade
-
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_tailLash, trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_shadowFlameCast, trigger_fear, trigger_shadowFlameHit
-
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS", "Event") --trigger_fearWard
-
-	self:RegisterEvent("CHAT_MSG_COMBAT_SELF_MISSES", "Event") --trigger_parryYou
-	
-	if SUPERWOW_VERSION or SetAutoloot then
-		self:RegisterEvent("UNIT_CASTEVENT")
-	end
-
+	self:RegisterCombatLog("SPELL_CAST_START", spell.shadowFlame, "ShadowFlameCastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, spell.shadowFlame, "ShadowFlameHitEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", spell.fear, "FearEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.fearWard, "FearWardEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.fearWard, "FearWardFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.curse, "CurseEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.curse, "CurseFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.wildPolymorph, "WildPolymorphEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", spell.wildPolymorph, "WildPolymorphFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", spell.corruptedHealing, "CorruptedHealingEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", classCallKeys, "ClassCallEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", spell.tailLash, "TailLashEvent")
+	self:RegisterCombatLog("SWING_MISSED", nil, "ParryEvent")
 
 --Phase 1
 	self:ThrottleSync(3, syncName.mc)
@@ -450,8 +461,6 @@ end
 
 function module:OnSetup()
 	self.started = nil
-
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --bar_addCounter
 end
 
 function module:OnEngage()
@@ -468,6 +477,7 @@ function module:OnEngage()
 	currentClassA = nil
 	currentClassB = nil
 	classCallTime = 0
+	mcPlayers = {}
 
 	self:Bar(L["bar_mobsSpawn"], timer.mobSpawn, icon.phase, true, color.phase)
 
@@ -490,10 +500,14 @@ function module:OnDisengage()
 	self:CancelDelayedMessage(L["msg_classCall_soon3"])
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if string.find(msg, " Drakonid dies.") then
+-- UNIT_DIED: Drakonids for the counter and their colour, and players under Shadow Command
+-- (Nefarian's own death comes from the core's UNIT_DIED handler)
+function module:UnitDied(ev)
+	local name = ev.destName
+	if not name then
+		return
+	end
+	if string.find(name, " Drakonid", 1, true) then
 		drakonidsSelfCount = drakonidsSelfCount + 1
 		if drakonidsSelfCount <= drakonidsDeadMax then
 			self:Sync(syncName.addDead .. " " .. drakonidsSelfCount)
@@ -501,13 +515,9 @@ function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
 		if drakonidsSelfCount >= drakonidsDeadMax - 8 then -- warn landing party 4 adds (2 per side) before nef begins to land
 			self:Sync(syncName.landingParty)
 		end
-	end
-end
-
-function module:OnFriendlyDeath(msg)
-	if string.find(msg, L["trigger_deadOther"]) then
-		local _,_, deadPerson, _ = string.find(msg, L["trigger_deadOther"])
-		self:Sync(syncName.mcFade .. " " .. deadPerson)
+		self:CheckDrakonidColor(name)
+	elseif mcPlayers[name] then
+		self:Sync(syncName.mcFade .. " " .. name)
 	end
 end
 
@@ -582,114 +592,127 @@ function module:SyncClassCall(class)
 end
 
 function module:PLAYER_TARGET_CHANGED()
-	if phase == "phase1" and UnitName("Target") ~= nil then
-		if string.find(UnitName("Target"), " Drakonid") then
-			if string.find(UnitName("Target"), "Red") and not redFound then
-				self:Sync(syncName.drakonidColor .. " " .. "Red")
-			elseif string.find(UnitName("Target"), "Blue") and not blueFound then
-				self:Sync(syncName.drakonidColor .. " " .. "Blue")
-			elseif string.find(UnitName("Target"), "Green") and not greenFound then
-				self:Sync(syncName.drakonidColor .. " " .. "Green")
-			elseif string.find(UnitName("Target"), "Black") and not blackFound then
-				self:Sync(syncName.drakonidColor .. " " .. "Black")
-			elseif string.find(UnitName("Target"), "Bronze") and not bronzeFound then
-				self:Sync(syncName.drakonidColor .. " " .. "Bronze")
-			end
-		end
-	end
+	self:CheckDrakonidColor(UnitName("Target"))
 end
 
-function module:Event(msg)
-	if msg == L["trigger_mcYou"] then
-		self:Sync(syncName.mc .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _,_,mcPlayer,_ = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _,_,mcPlayer,_ = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
-
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _,_,mcFadePlayer,_ = string.find(msg, L["trigger_mcFade"])
-		if mcFadePlayer == "you" then mcFadePlayer = UnitName("Player") end
-		self:Sync(syncName.mcFade .. " " .. mcFadePlayer)
-
-
-	elseif msg == L["trigger_shadowFlameCast"] then
-		self:Sync(syncName.shadowFlameCast)
-	
-	elseif string.find(msg, L["trigger_shadowFlameHit"]) then
-		self:Sync(syncName.shadowFlameHit)
-
-	elseif msg == L["trigger_fear"] then
-		self:Sync(syncName.fear)
-
-	elseif msg == L["trigger_fearWard"] then
-		self:FearWard()
-	elseif msg == L["trigger_fearWardFade"] then
-		self:FearWardFade()
-
-	elseif msg == L["trigger_curseYou"] then
-		self:Sync(syncName.curse .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_curseOther"]) then
-		local _,_,cursePlayer,_ = string.find(msg, L["trigger_curseOther"])
-		self:Sync(syncName.curse .. " " .. cursePlayer)
-
-	elseif string.find(msg, L["trigger_curseFade"]) then
-		local _,_,curseFadePlayer,_ = string.find(msg, L["trigger_curseFade"])
-		if curseFadePlayer == "you" then curseFadePlayer = UnitName("Player") end
-		self:Sync(syncName.curseFade .. " " .. curseFadePlayer)
-
-
-	elseif msg == L["trigger_wildPolymorphYou"] then
-		self:Sync(syncName.wildPolymorph .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_wildPolymorphOther"]) then
-		local _,_,wildPolymorphPlayer,_ = string.find(msg, L["trigger_wildPolymorphOther"])
-		self:Sync(syncName.wildPolymorph .. " " .. wildPolymorphPlayer)
-
-	elseif string.find(msg, L["trigger_wildPolymorphFade"]) then
-		local _,_,wildPolymorphFadePlayer,_ = string.find(msg, L["trigger_wildPolymorphFade"])
-		if wildPolymorphFadePlayer == "you" then wildPolymorphFadePlayer = UnitName("Player") end
-		self:Sync(syncName.wildPolymorphFade .. " " .. wildPolymorphFadePlayer)
-
-
-	elseif string.find(msg, L["trigger_corruptedHealing"]) then
-		self:Sync(syncName.corruptedHealing)
-		if phase == "phase2" and currentClassA ~= "PRIEST" and currentClassB ~= "PRIEST" then
-			self:SyncClassCall("PRIEST")
-		end
-
-	elseif string.find(msg, "afflicted by Involuntary Transformation") then
-		if phase == "phase2" and currentClassA ~= "DRUID" and currentClassB ~= "DRUID" then
-			self:SyncClassCall("DRUID")
-		end
-
-	elseif string.find(msg, "is afflicted by Berserk") or string.find(msg, "You are afflicted by Berserk") then
-		if phase == "phase2" and currentClassA ~= "WARRIOR" and currentClassB ~= "WARRIOR" then
-			self:SyncClassCall("WARRIOR")
-		end
-
-
-	elseif string.find(msg, L["trigger_tailLash"]) and self.db.profile.taillash then
-		self:TailLash()
-
-	elseif string.find(msg, L["trigger_parryYou"]) and self.db.profile.parry then
-		if UnitName("Target") ~= nil and UnitName("TargetTarget") ~= nil then
-			if UnitName("Target") == "Nefarian" and UnitName("TargetTarget") ~= UnitName("Player") then
-				self:ParryYou()
-			end
-		end
-	end
-end
-
-function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
-	if spell == spellId.shadowFlame and action == "START" then
-		self:Sync(syncName.shadowFlameCast)
-		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
+-- the colour of a Drakonid name ("Red Drakonid"), from your target or a death in the combat log
+function module:CheckDrakonidColor(name)
+	if phase ~= "phase1" or not name or not string.find(name, " Drakonid", 1, true) then
 		return
+	end
+	local found = { Red = redFound, Blue = blueFound, Green = greenFound, Black = blackFound, Bronze = bronzeFound }
+	for _, c in ipairs(drakonidColors) do
+		if string.find(name, c, 1, true) and not found[c] then
+			self:Sync(syncName.drakonidColor .. " " .. c)
+			return
+		end
+	end
+end
+
+------------------------------
+--   Combat log handlers    --
+------------------------------
+-- ev is described at RegisterCombatLog in Core.lua
+
+local function IsMe(guid)
+	return guid and guid == UnitGUID("player")
+end
+
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
+	end
+end
+
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
+	end
+end
+
+function module:ShadowFlameCastEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.shadowFlameCast)
+	end
+end
+
+-- the cast finishing, or the flame landing on anyone
+function module:ShadowFlameHitEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.shadowFlameHit)
+	end
+end
+
+function module:FearEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.fear)
+	end
+end
+
+function module:FearWardEvent(ev)
+	if IsMe(ev.destGUID) then
+		self:FearWard()
+	end
+end
+
+function module:FearWardFadeEvent(ev)
+	if IsMe(ev.destGUID) then
+		self:FearWardFade()
+	end
+end
+
+function module:CurseEvent(ev)
+	if ev.destName and (not ev.sourceName or ev.sourceName == self.translatedName) then
+		self:Sync(syncName.curse .. " " .. ev.destName)
+	end
+end
+
+function module:CurseFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.curseFade .. " " .. ev.destName)
+	end
+end
+
+function module:WildPolymorphEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.wildPolymorph .. " " .. ev.destName)
+	end
+	self:InferClassCall("MAGE")
+end
+
+function module:WildPolymorphFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.wildPolymorphFade .. " " .. ev.destName)
+	end
+end
+
+function module:CorruptedHealingEvent(ev)
+	self:Sync(syncName.corruptedHealing)
+	self:InferClassCall("PRIEST")
+end
+
+function module:ClassCallEvent(ev)
+	self:InferClassCall(classCallSpell[ev.spellId] or classCallSpell[ev.spellName or ""])
+end
+
+function module:InferClassCall(class)
+	if class and phase == "phase2" and currentClassA ~= class and currentClassB ~= class then
+		self:SyncClassCall(class)
+	end
+end
+
+function module:TailLashEvent(ev)
+	if ev.sourceName == self.translatedName and IsMe(ev.destGUID) and self.db.profile.taillash then
+		self:TailLash()
+	end
+end
+
+-- your melee parried by Nefarian while he isn't targeting you
+function module:ParryEvent(ev)
+	if ev.missType == "PARRY" and ev.destName == self.translatedName and IsMe(ev.sourceGUID) and self.db.profile.parry then
+		if UnitName("Target") == self.translatedName and UnitName("TargetTarget") and UnitName("TargetTarget") ~= UnitName("Player") then
+			self:ParryYou()
+		end
 	end
 end
 
@@ -756,6 +779,7 @@ end
 
 --Phase 1
 function module:Mc(rest)
+	mcPlayers[rest] = true
 	self:ClickBar(rest..L["bar_mc"], timer.mcDur, icon.mc, rest, L["spell_mc"], true, color.mc)
 	self:Message(rest..L["msg_mc"], "Urgent", false, nil, false)
 
@@ -773,6 +797,7 @@ function module:Mc(rest)
 	end
 end
 function module:McFade(rest)
+	mcPlayers[rest] = nil
 	self:RemoveBar(rest..L["bar_mc"])
 	self:RemoveWarningSign(icon.mc)
 
@@ -1066,19 +1091,16 @@ function module:Test()
 			self:CHAT_MSG_MONSTER_YELL(msg)
 		end },
 		{ time = 3, func = function()
-			local msg = "Chromatic Drakonid dies."
-			print("Test: Drakonid kill (1/42)")
-			self:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
+			print("Test: Drakonid kill (1/42), a Red Drakonid")
+			self:UnitDied({ destName = "Red Drakonid" })
 		end },
 		{ time = 5, func = function()
-			local msg = raid1 .. " is afflicted by Shadow Command"
-			print("Test: MC - " .. msg)
-			self:Event(msg)
+			print("Test: MC - " .. raid1)
+			self:McEvent({ destName = raid1 })
 		end },
 		{ time = 8, func = function()
-			local msg = "Shadow Command fades from " .. raid1 .. "."
-			print("Test: MC fade - " .. msg)
-			self:Event(msg)
+			print("Test: MC fade - " .. raid1)
+			self:McFadeEvent({ destName = raid1 })
 		end },
 
 		-- Phase 2 Landing
@@ -1095,24 +1117,20 @@ function module:Test()
 
 		-- Shadow Flame & Fear
 		{ time = 17, func = function()
-			local msg = "Nefarian begins to cast Shadow Flame."
-			print("Test: Shadow Flame cast - " .. msg)
-			self:Event(msg)
+			print("Test: Shadow Flame cast")
+			self:ShadowFlameCastEvent({ sourceName = module.translatedName, spellId = 22539 })
 		end },
 		{ time = 19, func = function()
-			local msg = "Nefarian's Shadow Flame hits " .. raid1 .. " for 4200 Fire damage."
-			print("Test: Shadow Flame hit - " .. msg)
-			self:Event(msg)
+			print("Test: Shadow Flame hit")
+			self:ShadowFlameHitEvent({ sourceName = module.translatedName, spellId = 22539 })
 		end },
 		{ time = 22, func = function()
-			local msg = "Nefarian begins to cast Bellowing Roar."
-			print("Test: Bellowing Roar - " .. msg)
-			self:Event(msg)
+			print("Test: Bellowing Roar")
+			self:FearEvent({ sourceName = module.translatedName, spellId = 22686 })
 		end },
 		{ time = 26, func = function()
-			local msg = player .. " is afflicted by Veil of Shadow."
-			print("Test: Veil of Shadow - " .. msg)
-			self:Event(msg)
+			print("Test: Veil of Shadow on " .. player)
+			self:CurseEvent({ sourceName = module.translatedName, destName = player })
 		end },
 
 		-- Class Call (calls player's own class!)

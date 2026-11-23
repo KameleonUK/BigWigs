@@ -170,7 +170,7 @@ function module:Debuff(rest)
 
 	if rest == L["s_ancientdread"] then
 		self:Bar(L["bar_debuff"], timer.debuff, icon.debuff, true, color.debuff)
-		if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_ancientDread"], "Urgent", false, nil, false)
 			self:Sound("Info")
 			self:WarningSign(icon.ancientDread, 1)
@@ -188,7 +188,7 @@ function module:Debuff(rest)
 
 	elseif rest == L["s_cauterizingflames"] then
 		self:Bar(L["bar_debuff"], timer.debuff, icon.debuff, true, color.debuff)
-		if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_cauterizingFlames"], "Urgent", false, nil, false)
 			self:Sound("Info")
 			self:WarningSign(icon.cauterizingFlames, 1)
@@ -196,7 +196,7 @@ function module:Debuff(rest)
 
 	elseif rest == L["s_witheringheat"] then
 		self:Bar(L["bar_debuff"], timer.debuff, icon.debuff, true, color.debuff)
-		if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_witheringHeat"], "Urgent", false, nil, false)
 			self:Sound("Info")
 			self:WarningSign(icon.witheringHeat, 1)
@@ -204,7 +204,7 @@ function module:Debuff(rest)
 
 	elseif rest == L["s_ancienthysteria"] then
 		self:Bar(L["bar_debuff"], timer.debuff, icon.debuff, true, color.debuff)
-		if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+		if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 			self:Message(L["msg_ancientHysteria"], "Urgent", false, nil, false)
 			self:Sound("Info")
 			self:WarningSign(icon.ancientHysteria, 1)

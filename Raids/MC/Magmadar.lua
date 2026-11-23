@@ -102,9 +102,9 @@ function module:OnEngage()
 	if self.db.profile.panic then
 		self:Bar(L["bar_panicCd"], timer.panicFirstCd, icon.panic, true, color.panicCd)
 		
-		if UnitClass("Player") == "Warrior" then
+		if BigWigs:PlayerClass() == "WARRIOR" then
 			self:WarningSign(icon.berserkerRage, 0.7)
-		elseif UnitClass("Player") == "Shaman" then
+		elseif BigWigs:PlayerClass() == "SHAMAN" then
 			self:DelayedWarningSign(5, icon.tremor, 0.7)
 		end
 	end
@@ -154,7 +154,7 @@ function module:Panic()
 	self:RemoveWarningSign(icon.tremor)
 	
 	self:Bar(L["bar_panicCd"], timer.panicCd, icon.panic, true, color.panicCd)
-	if UnitClass("Player") == "Priest" or  UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or  BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_panic"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.panic, 0.7)
@@ -162,9 +162,9 @@ function module:Panic()
 	
 	self:DelayedBar(timer.panicCd, L["bar_panicSoon"], timer.panicSoon, icon.panic, true, color.panicSoon)
 	
-	if UnitClass("Player") == "Warrior" then
+	if BigWigs:PlayerClass() == "WARRIOR" then
 		self:DelayedWarningSign(timer.panicCd + timer.panicSoon - 10, icon.berserkerRage, 0.7)
-	elseif UnitClass("Player") == "Shaman" then
+	elseif BigWigs:PlayerClass() == "SHAMAN" then
 		self:DelayedWarningSign(timer.panicCd, icon.tremor, 0.7)
 	end
 end
@@ -172,7 +172,7 @@ end
 function module:Frenzy()
 	self:RemoveBar(L["bar_frenzyCd"])
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_frenzy"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.tranquil, 1)

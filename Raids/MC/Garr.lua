@@ -153,7 +153,7 @@ function module:AddDead(rest)
 end
 
 function module:Immolate()
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_immolate"], "Urgent", false, nil, false)
 		self:WarningSign(icon.immolate, 1)
 	end

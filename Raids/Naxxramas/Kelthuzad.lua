@@ -29,16 +29,16 @@ module.toggleoptions = {
 	"bosskill",
 }
 
-local isPriest = UnitClass("Player") == "Priest"
-local isWarrior = UnitClass("Player") == "Warrior"
+local isPriest = BigWigs:PlayerClass() == "PRIEST"
+local isWarrior = BigWigs:PlayerClass() == "WARRIOR"
 
 local isHealer = false
-if UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" or isPriest or UnitClass("Player") == "Shaman" then
+if BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" or isPriest or BigWigs:PlayerClass() == "SHAMAN" then
 	isHealer = true
 end
 
 local isInterrupter = false
-if UnitClass("Player") == "Rogue" or isWarrior then
+if BigWigs:PlayerClass() == "ROGUE" or isWarrior then
 	isInterrupter = true
 end
 
@@ -988,7 +988,7 @@ function module:Phase3()
 
 	if self.db.profile.phase then
 		self:Message(L["msg_phase3"], "Urgent", false, nil, false)
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" then
 			self:Sound("Beware")
 		end
 	end
@@ -1164,7 +1164,7 @@ function module:Detonate(rest)
 		end
 	end
 
-	if (UnitClass("Player") ~= "Warrior" and UnitClass("Player") ~= "Rogue") and self.db.profile.detonate then
+	if (BigWigs:PlayerClass() ~= "WARRIOR" and BigWigs:PlayerClass() ~= "ROGUE") and self.db.profile.detonate then
 		self:Message(L["msg_detonate"] .. rest, "Attention", false, nil, false)
 
 		self:Bar(rest .. L["bar_detonateAfflic"], timer.detonateAfflic, icon.detonate, true, color.detonate)

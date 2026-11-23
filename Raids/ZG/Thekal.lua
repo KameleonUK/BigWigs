@@ -895,7 +895,7 @@ function module:Heal()
 	
 	self:Bar(L["bar_heal"], timer.heal, icon.heal, true, color.heal)
 	
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Warrior" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "MAGE" then
 		self:Message(L["msg_heal"], "Urgent", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.heal, timer.heal)
@@ -911,7 +911,7 @@ end
 function module:Silence(rest)
 	self:Bar(rest..L["bar_silence"], timer.silence, icon.silence, true, color.silence)	
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(rest..L["msg_silence"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.silence, 0.7)
@@ -957,7 +957,7 @@ end
 function module:Bloodlust(rest)
 	self:Bar(rest..L["bar_bloodlust"], timer.bloodlust, icon.bloodlust, true, color.bloodlust)	
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then
 		self:Message(rest..L["msg_bloodlust"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.bloodlust, 0.7)
@@ -1041,7 +1041,7 @@ end
 function module:Frenzy()
 	self:Bar(L["bar_frenzy"], timer.frenzy, icon.frenzy, true, color.frenzy)
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_frenzy"], "Personal", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.frenzy, 1)

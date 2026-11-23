@@ -239,7 +239,7 @@ end
 
 function module:Curse()
 	self:Bar(L["bar_curseCd"], timer.curseCd, icon.curse, true, color.curse)
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_curse"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.curse, 1)
@@ -250,7 +250,7 @@ function module:ImpendingDoom()
 	self:RemoveBar(L["bar_doomCd"])
 	
 	self:Bar(L["bar_doomDmg"], timer.impendingDoomDur, icon.impendingDoom, true, color.impendingDoomDur)
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_doom"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.impendingDoom, 1)
@@ -263,7 +263,7 @@ function module:McCast()
 	self:RemoveBar(L["bar_mcCd"])
 	
 	self:Bar(L["bar_mcCast"], timer.mcCast, icon.mc, true, color.mcCast)
-	if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "MAGE" then
 		self:Message(L["msg_mcCast"], "Important", false, nil, false)
 		self:WarningSign(icon.mc, 0.7)
 	end
@@ -284,7 +284,7 @@ function module:Mc(rest)
 	self:Bar(rest..L["bar_mc"].. ">Click Me<", timer.mc, icon.mc, true, color.mc)
 	self:SetCandyBarOnClick("BigWigsBar "..rest..L["bar_mc"].. ">Click Me<", function(name, button, extra) TargetByName(extra, true) end, rest)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(rest..L["msg_mc"], "Attention", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.mc, 0.7)

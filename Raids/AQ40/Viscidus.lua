@@ -322,7 +322,7 @@ end
 function module:Volley()
 	self:IntervalBar(L["bar_volley"], timer.volley[1], timer.volley[2], icon.volley, true, color.volley)
 
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.volley, 0.7)
 	end
 end

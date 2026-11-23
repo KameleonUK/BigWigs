@@ -316,9 +316,9 @@ end
 function module:SmokeBomb()
 	self:Bar(L["bar_smokeBomb"], timer.smokeBomb, icon.smokeBomb, true, color.smokeBomb)
 	
-	if UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.smokeBomb, 0.7)
-	elseif UnitClass("Player") == "Paladin" then
+	elseif BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.smokeBomb, 0.7)
 	end
 end
@@ -326,13 +326,13 @@ end
 function module:Reflect()
 	self:Bar(L["bar_reflect"], timer.reflect, icon.reflect, true, color.reflect)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.reflect, timer.reflect)
-	elseif UnitClass("Player") == "Warlock" then
+	elseif BigWigs:PlayerClass() == "WARLOCK" then
 		self:WarningSign(icon.reflect, timer.reflect)
 	end
 	
-	if (UnitClass("Player") ~= "Warrior") and (UnitClass("Player") ~= "Rogue") then
+	if (BigWigs:PlayerClass() ~= "WARRIOR") and (BigWigs:PlayerClass() ~= "ROGUE") then
 		self:Message(L["msg_reflect"], "Important", false, nil, false)
 		self:Sound("Long")
 	end
@@ -353,9 +353,9 @@ end
 function module:Curse()
 	self:Message(L["msg_curse"], "Urgent", false, nil, false)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.curse, 0.7)
-	elseif UnitClass("Player") == "Druid" then
+	elseif BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.curse, 0.7)
 	end
 end

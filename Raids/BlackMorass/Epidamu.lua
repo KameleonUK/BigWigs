@@ -149,7 +149,7 @@ end
 function module:DrainMana(rest)
 	self:Bar(rest..L["bar_drainMana"], timer.drainMana, icon.drainMana, true, color.drainMana)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") ~= "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() ~= "PALADIN" then
 		self:WarningSign(icon.drainMana, 0.7)
 		self:Sound("Info")
 	end

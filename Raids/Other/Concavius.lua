@@ -581,7 +581,7 @@ end
 function module:VeilOfShadow(rest)
 	self:Bar(L["bar_veilOfShadow"].." "..rest, timer.veilOfShadow, icon.veilOfShadow, true, color.veilOfShadow)
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_veilOfShadow"], "Personal", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.veilOfShadow, 3)
@@ -614,7 +614,7 @@ end
 function module:PiercingShadowAfflic(rest)
 	self:Bar(L["bar_piercingShadowAfflic"].." "..rest, timer.piercingShadowAfflic, icon.piercingShadow, true, color.piercingShadowAfflic)
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_piercingShadow"], "Personal", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.piercingShadow, 3)

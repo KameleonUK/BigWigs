@@ -152,7 +152,7 @@ function module:Sacrifice(rest)
 	
 	bwPlayerIsAttacking = nil
 	if IsRaidLeader() or IsRaidOfficer() then
-		if UnitClass("Player") ~= "Rogue" and UnitClass("Player") ~= "Druid" then
+		if BigWigs:PlayerClass() ~= "ROGUE" and BigWigs:PlayerClass() ~= "DRUID" then
 			if PlayerFrame.inCombat then
 				bwPlayerIsAttacking = true
 			end

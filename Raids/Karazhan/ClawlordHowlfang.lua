@@ -167,9 +167,9 @@ end
 function module:Curse()
 	self:Message(L["msg_curse"], "Urgent", false, nil, false)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.curse, 0.7)
-	elseif UnitClass("Player") == "Druid" then
+	elseif BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.curse, 0.7)
 	end
 end

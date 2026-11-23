@@ -332,7 +332,7 @@ function module:VenomSpit()
 	self:RemoveBar(L["bar_venomSpit"])
 	self:Bar(L["bar_venomSpit"], timer.venomSpit, icon.venomSpit, true, color.venomSpit)
 
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.poisonTotem, 0.7)
 	end
 end
@@ -349,7 +349,7 @@ end
 function module:CorrosivePoison(rest)
 	self:Bar(rest .. L["bar_corrosivePoison"], timer.corrosivePoison, icon.corrosivePoison, true, color.corrosivePoison)
 
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.corrosivePoison, 0.7)
 	end
 end
@@ -361,7 +361,7 @@ end
 function module:NecroticPoison(rest)
 	self:Bar(rest .. L["bar_necroticPoison"], timer.necroticPoison, icon.necroticPoison, true, color.necroticPoison)
 
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.necroticPoison, 0.7)
 	end
 end

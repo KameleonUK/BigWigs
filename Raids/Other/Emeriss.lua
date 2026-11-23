@@ -437,7 +437,7 @@ end
 function module:VolatileInfection(rest)
 	self:Bar(rest..L["bar_volatileInfection"], timer.volatileInfection, icon.volatileInfection, true, color.volatileInfection)
 	
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then
 		self:Message(rest..L["msg_volatileInfection"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.volatileInfection, 0.7)

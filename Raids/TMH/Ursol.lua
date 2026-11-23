@@ -102,7 +102,7 @@ function module:BigWigs_RecvSync(sync, rest, nick)
 	elseif sync == syncName.roarOfTerror and self.db.profile.roarofterror then
 		self:Message(L["msg_roarOfTerror"], "Urgent")
 		self:Bar(L["bar_roarOfTerror"], timer.roarOfTerror, icon.roarOfTerror, color.roarOfTerror)
-		if UnitClass("Player") == "Shaman" then
+		if BigWigs:PlayerClass() == "SHAMAN" then
 			self:WarningSign(icon.tremorTotem, 2)
 		end
 	elseif sync == syncName.presenceFadeUrsol and self.db.profile.transition then

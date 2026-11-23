@@ -588,7 +588,7 @@ function module:Event(msg)
 
 
 	elseif msg == L["trigger_sonicBurstYou"] and self.db.profile.sonicburst then
-		if UnitClass("Player") == "Priest" or UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" or UnitClass("Player") == "Hunter" then
+		if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" or BigWigs:PlayerClass() == "HUNTER" then
 			self:Message(L["msg_sonicBurstYou"], "Urgent", false, nil, false)
 			self:WarningSign(icon.sonicBurst, 1)
 		end
@@ -744,7 +744,7 @@ function module:BlizzardPhase()
 end
 
 function module:Traps()
-	if traps == nil and UnitClass("Player") == "Rogue" and self.db.profile.traps then
+	if traps == nil and BigWigs:PlayerClass() == "ROGUE" and self.db.profile.traps then
 		self:Message(L["msg_traps"], "Personal", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.traps, 1)
@@ -753,7 +753,7 @@ function module:Traps()
 end
 
 function module:TrapsFade()
-	if traps == true and UnitClass("Player") == "Rogue" and self.db.profile.traps then
+	if traps == true and BigWigs:PlayerClass() == "ROGUE" and self.db.profile.traps then
 		self:Message(L["msg_trapsFade"], "Personal", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.traps, 1)
@@ -763,7 +763,7 @@ end
 
 function module:EQ30()
 	if self.db.profile.eq then
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_earthquakeSoon"], "Urgent", false, nil, false)
 			self:Sound("RunAway")
 			self:WarningSign(icon.earthquake, 1)
@@ -774,7 +774,7 @@ end
 
 function module:EQ20()
 	if self.db.profile.eq then
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_earthquakeSoon"], "Urgent", false, nil, false)
 			self:Sound("RunAway")
 			self:WarningSign(icon.earthquake, 1)
@@ -785,7 +785,7 @@ end
 
 function module:EQ10()
 	if self.db.profile.eq then
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_earthquakeSoon"], "Urgent", false, nil, false)
 			self:Sound("RunAway")
 			self:WarningSign(icon.earthquake, 1)
@@ -796,7 +796,7 @@ end
 
 function module:EQ()
 	if self.db.profile.eq then
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" then
 			self:Message(L["msg_earthquakeDone"], "Positive", false, nil, false)
 			self:WarningSign(icon.earthquake, 1)
 			self:Sound("Info")

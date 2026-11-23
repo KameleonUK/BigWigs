@@ -385,10 +385,10 @@ end
 function module:Freeze()
 	self:Message(L["msg_freeze"], "Urgent", false, nil, false)
 	
-	if UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.freeze, 1)
 		self:Sound("Info")
-	elseif UnitClass("Player") == "Paladin" then
+	elseif BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.freeze, 1)
 		self:Sound("Info")
 	end
@@ -400,7 +400,7 @@ function module:Dismount()
 	
 	bwPlayerIsAttacking = nil
 	if IsRaidLeader() or IsRaidOfficer() then
-		if UnitClass("Player") ~= "Rogue" and UnitClass("Player") ~= "Druid" then
+		if BigWigs:PlayerClass() ~= "ROGUE" and BigWigs:PlayerClass() ~= "DRUID" then
 			if PlayerFrame.inCombat then
 				bwPlayerIsAttacking = true
 			end

@@ -259,7 +259,7 @@ end
 function module:Frenzy()
 	self:RemoveBar(L["bar_frenzyCd"])
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_frenzy"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.tranquil, 1)

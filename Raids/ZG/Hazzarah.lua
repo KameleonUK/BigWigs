@@ -214,7 +214,7 @@ function module:Sleep()
 	self:Bar(L["bar_sleepAfflic"], timer.sleepAfflic, icon.sleep, true, color.sleep)
 	self:Message(L["msg_sleep"], "Attention", false, nil, false)
 	
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.tremor, 1)
 	end
 	
@@ -225,11 +225,11 @@ function module:ChainBurn()
 	self:Bar(L["bar_chainBurn"], timer.chainBurn, icon.chainBurn, true, color.chainBurn)
 	self:Message(L["msg_chainBurn"], "Attention", false, nil, false)
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:WarningSign(icon.viperSting, 1)
-	elseif UnitClass("Player") == "Warlock" then
+	elseif BigWigs:PlayerClass() == "WARLOCK" then
 		self:WarningSign(icon.manaDrain, 1)
-	elseif UnitClass("Player") == "Priest" then
+	elseif BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.manaBurn, 1)
 	end
 end

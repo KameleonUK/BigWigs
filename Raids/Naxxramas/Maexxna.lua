@@ -291,7 +291,7 @@ end
 function module:Poison()
 	self:RemoveBar(L["bar_poisonCD"])
 	self:Bar(L["bar_poisonGain"], timer.poisonDuration, icon.poison, true, "Green")
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.poison, 0.7)
 	end
 end

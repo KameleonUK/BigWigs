@@ -263,7 +263,7 @@ function module:Mc(rest)
 		end
 	end
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.mc, 1)
 		self:Sound("Info")
 	end

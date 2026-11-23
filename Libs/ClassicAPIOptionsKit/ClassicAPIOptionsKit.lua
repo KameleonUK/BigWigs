@@ -23,7 +23,7 @@ Embedding: copy this file into the addon (libs\ClassicAPIOptionsKit\) and list i
 that builds the pages. Several addons can embed it; the newest version loaded wins.
 ]]
 
-local VERSION = 4
+local VERSION = 5
 if ClassicAPIOptionsKit and (ClassicAPIOptionsKit.version or 0) >= VERSION then return end
 local Kit = ClassicAPIOptionsKit or {}
 ClassicAPIOptionsKit = Kit
@@ -142,6 +142,36 @@ local function AddCategory(page, position)
 	end
 end
 
+-- ClassicAPI's Settings window sorts the top-level AddOns list by name, but shows a parent's children in the
+-- order they were added and ignores AddCategory's position (API.md, InterfaceOptions). So child pages are
+-- queued and added on the next frame, sorted by parent and then name: every page an addon builds in one go
+-- (at load, ADDON_LOADED, PLAYER_LOGIN...) lists alphabetically, whatever order the addon created them in.
+-- Kit:Open adds anything still queued first. (VERSION 5)
+function Kit.FlushPages()
+	local queue = Kit.pendingPages
+	Kit.pendingPages = nil
+	if not queue then return end
+	table.sort(queue, function(a, b)
+		if a.parent ~= b.parent then
+			return a.parent < b.parent
+		end
+		return string.upper(a.name) < string.upper(b.name)
+	end)
+	for _, page in ipairs(queue) do
+		AddCategory(page, page.kitPosition)
+	end
+end
+
+local function QueueChildPage(page)
+	Kit.pendingPages = Kit.pendingPages or {}
+	table.insert(Kit.pendingPages, page)
+	Kit.flushFrame = Kit.flushFrame or CreateFrame("Frame")
+	Kit.flushFrame:SetScript("OnUpdate", function()
+		this:SetScript("OnUpdate", nil)
+		Kit.FlushPages()
+	end)
+end
+
 local function RefreshControls(page)
 	page.updating = true -- sliders fire OnValueChanged when Update sets them; this stops that writing back
 	for _, control in ipairs(page.controls) do
@@ -159,7 +189,8 @@ end
 --   o.title    the heading on the page (defaults to name)
 --   o.subtitle a line of text under the heading
 --   o.bind     a Kit.Binder result, so controls can use key = "..."
---   o.position index in the AddOns list (InterfaceOptions_AddCategory lists children in add order)
+--   o.position index in the AddOns list. ClassicAPI's Settings window ignores it; child pages are added on the
+--              next frame in alphabetical order instead (see Kit.FlushPages)
 --   o.onShow   called each time the page is shown, before the controls refresh
 function Kit:NewPage(o)
 	local page = CreateFrame("Frame")
@@ -238,13 +269,19 @@ function Kit:NewPage(o)
 	for name, fn in pairs(PageMethods) do
 		page[name] = fn
 	end
-	AddCategory(page, o.position)
+	if o.parent then
+		page.kitPosition = o.position
+		QueueChildPage(page)
+	else
+		AddCategory(page, o.position)
+	end
 	return page
 end
 
 -- Opens the window at a page (the page frame or its name). Prefers ClassicAPI's own copy of the function: an
 -- old Ace3 AceConfigDialog-3.0 replaces the global with one that opens its own window instead
 function Kit:Open(page)
+	Kit.FlushPages()
 	local open = (ClassicAPI and ClassicAPI.InterfaceOptionsFrame_OpenToCategory) or InterfaceOptionsFrame_OpenToCategory
 	open(page)
 end

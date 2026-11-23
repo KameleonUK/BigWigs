@@ -247,7 +247,7 @@ end
 function module:Hex(rest)
 	self:Bar(rest .. L["bar_hex"], timer.hexDuration, icon.hex, true, color.hex)
 
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" then
 		self:Message(rest .. L["msg_hex"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.hex, 0.7)
@@ -271,17 +271,15 @@ function module:BrainWash()
 		return
 	end
 
-	if UnitClass("Player") == "Warrior" and self.db.profile.autotarget then
+	if BigWigs:PlayerClass() == "WARRIOR" and self.db.profile.autotarget then
 		TargetByName("Brain Wash Totem", true)
-	elseif UnitClass("Player") == "Rogue" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "ROGUE" and self.db.profile.autotarget then
 		TargetByName("Brain Wash Totem", true)
-	elseif UnitClass("Player") == "Hunter" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "HUNTER" and self.db.profile.autotarget then
 		TargetByName("Brain Wash Totem", true)
-	elseif UnitClass("Player") == "Mage" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "MAGE" and self.db.profile.autotarget then
 		TargetByName("Brain Wash Totem", true)
-	elseif UnitClass("Player") == "Warlock" and self.db.profile.autotarget then
-		TargetByName("Brain Wash Totem", true)
-	elseif UnitClass("Player") == "Warrior" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "WARLOCK" and self.db.profile.autotarget then
 		TargetByName("Brain Wash Totem", true)
 	end
 end
@@ -298,17 +296,17 @@ function module:HealingWard()
 		return
 	end
 
-	if UnitClass("Player") == "Warrior" and self.db.profile.autotarget then
+	if BigWigs:PlayerClass() == "WARRIOR" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
-	elseif UnitClass("Player") == "Rogue" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "ROGUE" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
-	elseif UnitClass("Player") == "Hunter" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "HUNTER" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
-	elseif UnitClass("Player") == "Mage" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "MAGE" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
-	elseif UnitClass("Player") == "Warlock" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "WARLOCK" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
-	elseif UnitClass("Player") == "Warrior" and self.db.profile.autotarget then
+	elseif BigWigs:PlayerClass() == "WARRIOR" and self.db.profile.autotarget then
 		TargetByName("Powerful Healing Ward", true)
 	end
 end

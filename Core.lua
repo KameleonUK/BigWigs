@@ -1271,6 +1271,13 @@ function BigWigs.modulePrototype:RegisterCombatLog(subevents, spells, handler)
 	end
 end
 
+-- The player's English class token ("WARRIOR", "MAGE"...), the same on every client language.
+-- Class checks compare against this, never UnitClass's first (localised) return.
+function BigWigs:PlayerClass()
+	local _, class = UnitClass("player")
+	return class
+end
+
 -- The raid mark (1 star ... 8 skull) from a sourceRaidFlags or destRaidFlags value, or nil.
 function BigWigs:RaidFlagsToMark(flags)
 	if not flags or flags == 0 then

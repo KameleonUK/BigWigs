@@ -410,7 +410,7 @@ end
 function module:Renew()
 	self:Bar(L["bar_renew"], timer.renew, icon.renew, true, color.renew)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then 
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then 
 		self:Message(L["msg_renew"], "Attention", false, nil, false)
 		self:Sound("Alarm")
 		self:WarningSign(icon.renew, 0.7)
@@ -476,7 +476,7 @@ end
 function module:VenomSpit(rest)
 	self:Bar(rest..L["bar_venomSpit"], timer.venomSpit, icon.venomSpit, true, color.venomSpit)
 	
-	if UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Shaman" then 
+	if BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "SHAMAN" then 
 		self:Message(L["msg_venomSpit"], "Attention", false, nil, false)
 		self:Sound("Alarm")
 		self:WarningSign(icon.venomSpit, 0.7)

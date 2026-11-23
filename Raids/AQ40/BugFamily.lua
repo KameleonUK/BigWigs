@@ -353,7 +353,7 @@ function module:Heal()
 	self:Bar(L["bar_heal"], timer.heal, icon.heal, true, color.heal)
 	self:Message(L["msg_heal"], "Attention", false, nil, false)
 	
-	if UnitClass("Player") == "Rogue" or UnitClass("Player") == "Warrior" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "MAGE" then
 		if UnitName("Target") == "Princess Yauj" then
 			self:WarningSign(icon.heal, timer.heal)
 			self:Sound("Beware")

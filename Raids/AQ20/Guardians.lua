@@ -342,7 +342,7 @@ function module:ArcaneReflect()
 	if fireArcaneReflectFound == nil then
 		self:Bar(L["bar_fireArcaneReflect"], timer.fireArcaneReflect, icon.fireArcaneReflect, true, color.fireArcaneReflect)
 
-		if UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then
+		if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then
 			self:WarningSign(icon.fireArcaneReflect, 1)
 		end
 
@@ -357,7 +357,7 @@ function module:ShadowReflect()
 	if shadowFrostReflectFound == nil then
 		self:Bar(L["bar_shadowFrostReflect"], timer.shadowFrostReflect, icon.shadowFrostReflect, true, color.shadowFrostReflect)
 
-		if UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then
+		if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then
 			self:WarningSign(icon.shadowFrostReflect, 1)
 		end
 

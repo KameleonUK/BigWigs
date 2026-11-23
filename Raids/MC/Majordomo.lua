@@ -184,7 +184,7 @@ function module:MagicReflect()
 
 	self:Bar(L["bar_magicReflect"], timer.reflectDur, icon.magicReflect, true, color.magicReflect)
 
-	if not (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Hunter") then
+	if not (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "HUNTER") then
 		self:Message(L["msg_magicReflect"], "Attention", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.magicReflect, 1)
@@ -201,7 +201,7 @@ function module:PhysicalReflect()
 
 	self:Bar(L["bar_physicalReflect"], timer.reflectDur, icon.physicalReflect, true, color.physicalReflect)
 
-	if not (UnitClass("Player") == "Priest" or UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock") then
+	if not (BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK") then
 		self:Message(L["msg_physicalReflect"], "Attention", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.physicalReflect, 1)

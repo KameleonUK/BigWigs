@@ -127,7 +127,7 @@ end
 function module:EnrageSoon()
 	enrageSoon = true
 	
-	if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_enrageSoon"], "Attention", false, nil, false)
 	end
 end

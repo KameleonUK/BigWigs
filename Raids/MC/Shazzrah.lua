@@ -136,7 +136,7 @@ function module:OnEngage()
 	if self.db.profile.counterspell then
 		self:Bar(L["bar_counterspellCd"], timer.counterspellFirstCd, icon.counterspell, true, color.counterspellCd)
 		
-		if not (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Hunter") then
+		if not (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "HUNTER") then
 			self:DelayedBar(timer.counterspellFirstCd, L["bar_counterspellSoon"], timer.counterspellSoon, icon.counterspell, true, color.counterspellSoon)
 			self:DelayedWarningSign(timer.counterspellFirstCd - 1, icon.counterspell, timer.counterspellSoon + 1)
 			self:DelayedMessage(timer.counterspellFirstCd - 1, L["msg_counterspellSoon"], "Attention", false, nil, false)
@@ -212,7 +212,7 @@ function module:Counterspell()
 	
 	self:Bar(L["bar_counterspellCd"], timer.counterspellCd, icon.counterspell, true, color.counterspellCd)
 	
-	if not (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Hunter") then
+	if not (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "HUNTER") then
 		self:Message(L["msg_counterspell"], "Positive", false, nil, false)
 		self:Sound("BikeHorn")
 		
@@ -226,7 +226,7 @@ end
 function module:Curse()
 	self:Bar(L["bar_curseCd"], timer.curseCd, icon.curse, true, color.curseCd)
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(L["msg_curse"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.curse, 0.7)
@@ -236,7 +236,7 @@ end
 function module:Deaden()
 	self:RemoveBar(L["bar_deadenCd"])
 	
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "PRIEST" then
 		self:Message(L["msg_deaden"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.deaden, timer.deadenDur)

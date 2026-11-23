@@ -177,7 +177,7 @@ end
 function module:Reflect()
 	self:Bar(L["bar_reflect"], timer.reflect, icon.reflect, true, color.reflect)
 	
-	if UnitClass("Player") ~= "Warrior" and UnitClass("Player") ~= "Rogue" then
+	if BigWigs:PlayerClass() ~= "WARRIOR" and BigWigs:PlayerClass() ~= "ROGUE" then
 		self:WarningSign(icon.reflect, 0.7)
 		self:Sound("Info")
 		self:Message(L["msg_reflect"], "Urgent", false, nil, false)

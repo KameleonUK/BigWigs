@@ -231,7 +231,7 @@ end
 function module:DarkMending()
 	self:Bar(L["bar_darkMending"], timer.darkMendingCast, icon.darkMending, true, color.darkMendingCast)
 	
-	if UnitClass("Player") == "Rogue" or UnitClass("Player") == "Warrior" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "MAGE" then
 		self:Message(L["msg_darkMending"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.darkMending, 0.7)
@@ -251,7 +251,7 @@ function module:Inspire()
 end
 
 function module:ShadowWordPain()
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_shadowWordPain"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.shadowWordPain, 0.7)
@@ -259,7 +259,7 @@ function module:ShadowWordPain()
 end
 
 function module:Immolate()
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_immolate"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.immolate, 0.7)

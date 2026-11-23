@@ -448,7 +448,7 @@ end
 function module:Swp(rest)
 	self:Bar(rest..L["bar_swp"], timer.swp, icon.swp, true, color.swp)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(rest..L["msg_swp"], "Personal", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.swp, 0.7)

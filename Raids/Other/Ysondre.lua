@@ -495,7 +495,7 @@ end
 function module:CurseOfThorns(rest)
 	self:Bar(rest..L["bar_curseOfThorns"], timer.curseOfThornsDur, icon.curseOfThorns, true, color.curseOfThornsDur)
 	
-	if UnitClass("Player") == "Druid" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "MAGE" then
 		self:Message(rest..L["msg_curseOfThorns"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.curseOfThorns, 0.7)
@@ -509,7 +509,7 @@ end
 function module:Silence(rest)
 	self:Bar(rest..L["bar_silence"], timer.silenceDur, icon.silence, true, color.silenceDur)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(rest..L["msg_silence"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.silence, 0.7)

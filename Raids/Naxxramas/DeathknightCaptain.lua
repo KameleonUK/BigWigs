@@ -150,7 +150,7 @@ function module:Whirlwind()
 		self:Bar(L["bar_whirlwind2"], timer.whirlwindDur, icon.whirlwind, true, color.whirlwindDur)
 	end
 	
-	if UnitName("Target") == "Deathknight Captain" and (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Paladin") then
+	if UnitName("Target") == "Deathknight Captain" and (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "PALADIN") then
 		self:WarningSign(icon.whirlwind, 0.7)
 	end
 	

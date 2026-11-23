@@ -178,7 +178,7 @@ end
 function module:Volley()
 	self:Bar(L["bar_volley"], timer.volley, icon.volley, true, color.volley)
 	
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.volley, 0.7)
 	end
 end
@@ -194,7 +194,7 @@ end
 function module:EggSpawn()
 	bwPlayerIsAttacking = nil
 	if IsRaidLeader() or IsRaidOfficer() then
-		if UnitClass("Player") ~= "Rogue" and UnitClass("Player") ~= "Druid" then
+		if BigWigs:PlayerClass() ~= "ROGUE" and BigWigs:PlayerClass() ~= "DRUID" then
 			if PlayerFrame.inCombat then
 				bwPlayerIsAttacking = true
 			end

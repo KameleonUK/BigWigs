@@ -4,7 +4,8 @@ local isImmune = nil -- true once the immune phase sync was sent
 
 module.revision = 30029
 module.enabletrigger = module.translatedName
-module.toggleoptions = {"transitions", "bosskill"}--"wailoferennius", "howloferennius", "volley", 
+module.toggleoptions = {"transitions", "bosskill"}--"wailoferennius", "howloferennius", "volley",
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.zonename = {
 	AceLibrary("AceLocale-2.2"):new("BigWigs")["Emerald Sanctum"],
 	AceLibrary("Babble-Zone-2.2")["Emerald Sanctum"],
@@ -44,8 +45,6 @@ L:RegisterTranslations("enUS", function() return {
 	bar_isImmune = "Solnius is Immune",
 	msg_isImmune = "Solnius is Immune",
 	
-	trigger_solniusSleep = "Solnius gains Sleep Visual DND.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_solniusSleepFade = "Sleep Visual DND fades from Solnius.",--CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_isSleeping = "Solnius is Sleeping",
 	msg_isSleeping = "Mobs Incoming! 45sec to kill",
 	msg_isSleepingFade = "Solnius is Awake!",
@@ -101,8 +100,6 @@ L:RegisterTranslations("zhCN", function() return {
     bar_isImmune = "索尔纽斯免疫",
     msg_isImmune = "索尔纽斯免疫",
     
-    trigger_solniusSleep = "索尔纽斯获得了Sleep Visual DND的效果。",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_solniusSleepFade = "Sleep Visual DND效果从索尔纽斯身上消失。",--CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_isSleeping = "索尔纽斯正在沉睡",
     msg_isSleeping = "小怪来袭！45秒内击杀",
     msg_isSleepingFade = "索尔纽斯醒来了！",
@@ -174,15 +171,15 @@ local bwSolniusEngaged = false
 local bwSolniusHardMode = false
 local bwSolniusHardModeHardOn = false
 
+-- the sleep at 60% (server script boss_solnius.cpp: an aura added on Solnius, 45s, adds through portals)
+local sleepVisual = {25148, "Sleep Visual DND"}
+
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_solniusSleep
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_solniusSleepFade
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_wailOfErennius, trigger_howlOfErenniusResist
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", sleepVisual, "SleepEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", sleepVisual, "SleepFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
+	self:RegisterEvent("UNIT_HEALTH") --isImmune (this was never registered, so the warning never showed)
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_howlOfErenniusResist
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_hardMode
 	
@@ -201,7 +198,7 @@ function module:OnSetup()
 end
 
 function module:OnEngage()
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
+	isImmune = nil
 	
 	bwSolniusEngaged = true
 	bwSolniusHardMode = false
@@ -215,17 +212,22 @@ function module:UNIT_HEALTH(arg1)
 	if UnitName(arg1) == module.translatedName then
 		local health = UnitHealth(arg1)
 		local maxHealth = UnitHealthMax(arg1)
-		if math.ceil(100*health/maxHealth) < 59 and not isImmune then
+		if maxHealth == 0 then
+			return
+		end
+		local pct = math.ceil(100 * health / maxHealth)
+		if pct < 59 and not isImmune then
 			self:Sync(syncName.isImmune)
 			isImmune = true
-		elseif math.ceil(health) > 60 and isImmune then
+		elseif pct > 60 and isImmune then
 			isImmune = nil
 		end
 	end
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	if msg == string.format(UNITDIESOTHER, "Erennius") and bwSolniusHardMode == true then
+-- UNIT_DIED: Erennius dying first ends hard mode; Solnius's own death (the kill) comes from the core
+function module:UnitDied(ev)
+	if ev.destName == "Erennius" and bwSolniusHardMode == true then
 		--[[
 		self:RemoveBar(L["bar_wailOfErenniusCast"])
 		self:RemoveBar(L["bar_wailOfErenniusAfflicted"])
@@ -236,7 +238,7 @@ function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
 		if bwSolniusHardModeHardOn == false then
 			self:Sync(syncName.hardModeOff)
 		end
-	elseif msg == string.format(UNITDIESOTHER, "Solnius") and bwSolniusHardMode == true then
+	elseif ev.destName == self.translatedName and bwSolniusHardMode == true then
 		bwSolniusHardModeHardOn = true
 	end
 end
@@ -249,12 +251,20 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_solniusSleep"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:SleepEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.isSleeping)
-	elseif msg == L["trigger_solniusSleepFade"] then
+	end
+end
+
+function module:SleepFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.isSleepingFade)
-	--[[
+	end
+end
+
+	--[[ the old chat triggers for Erennius, kept for reference (the Erennius module handles him)
 	elseif msg == L["trigger_wailOfErenniusCast"] then
 		self:Sync(syncName.wailOfErenniusCast)
 	
@@ -264,8 +274,6 @@ function module:Event(msg)
 	elseif string.find(msg, L["trigger_volley"]) then
 		self:Sync(syncName.volley)
 	--]]
-	end
-end
 
 
 function module:BigWigs_RecvSync(sync, rest, nick)
@@ -333,7 +341,7 @@ end
 function module:Volley()
 	self:Bar(L["bar_volley"], timer.volley, icon.volley, true, color.volley)
 	
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.volley, 0.7)
 	end
 end

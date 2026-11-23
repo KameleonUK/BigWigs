@@ -322,7 +322,7 @@ end
 function module:Webs()
 	self:RemoveBar(L["bar_websCd"])
 	self:IntervalBar(L["bar_websCd"], timer.websCd[1], timer.websCd[2], icon.webs, true, color.websCd)
-	if UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.webs, 0.7)
 		self:Sound("Info")
 	end
@@ -337,7 +337,7 @@ function module:DrainStart()
 	self:Bar(L["bar_drainLife"], timer.drainLife, icon.drainLife, true, color.drainLife)
 	self:Message(L["msg_drainLife"], "Attention", false, nil, false)
 	
-	if UnitClass("Player") == "Rogue" or UnitClass("Player") == "Warrior" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.drainLife, timer.drainLife)
 		self:Sound("Beware")
 	end
@@ -390,7 +390,7 @@ end
 
 function module:PoisonVolley()
 	self:IntervalBar(L["bar_poisonVolleyCd"], timer.poisonVolleyCd[1], timer.poisonVolleyCd[2], icon.poisonVolley, true, color.poisonVolley)
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.poisonVolley, 0.7)
 		self:Sound("Info")
 	end

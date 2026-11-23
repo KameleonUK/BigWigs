@@ -357,7 +357,7 @@ end
 function module:Chill(rest)
 	self:Bar(L["bar_chillCd"], timer.chillCd, icon.chill, true, color.chillCd)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(L["msg_chill"], "Attention", false, nil, false)
 		self:WarningSign(icon.chill, 1)
 		self:Sound("Info")
@@ -393,11 +393,11 @@ function module:Reflection()
 	
 	self:Bar(L["bar_reflection"], timer.reflectionDur, icon.reflection, true, color.reflectionDur)
 	
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_reflectionUp"], "Attention", false, nil, false)
 		self:Sound("Long")
 		self:WarningSign(icon.reflection, 0.7)
-	elseif UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" then
+	elseif BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" then
 		self:Message(L["msg_reflectionUp"], "Attention", false, nil, false)
 		self:Sound("Long")
 		self:WarningSign(icon.reflection, timer.reflectionDur)
@@ -409,10 +409,10 @@ function module:ReflectionFade()
 	
 	self:IntervalBar(L["bar_reflectionCd"], timer.reflectionCd[1], timer.reflectionCd[2], icon.reflection, true, color.reflectionCd)
 	
-	if UnitClass("Player") == "Shaman" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Druid" or UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_reflectionFade"], "Positive", false, nil, false)
 		self:Sound("Alert")
-	elseif UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" then
+	elseif BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" then
 		self:Message(L["msg_reflectionFade"], "Positive", false, nil, false)
 		self:RemoveWarningSign(icon.reflection)
 		self:Sound("Alert")
@@ -420,7 +420,7 @@ function module:ReflectionFade()
 end
 
 function module:SelfReflect()
-	if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock") then
+	if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK") then
 		self:WarningSign(icon.reflection, 0.7)
 	end
 	

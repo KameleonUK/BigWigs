@@ -329,7 +329,7 @@ end
 function module:Roots(rest)
 	self:Bar(rest..L["bar_roots"], timer.roots, icon.roots, true, color.roots)
 	
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.roots, 0.7)
 		self:Sound("Info")
 	end
@@ -342,7 +342,7 @@ end
 function module:SweepingStrikes()
 	self:Bar(L["bar_sweepingStrikes"], timer.sweepingStrikes, icon.sweepingStrikes, true, color.sweepingStrikes)
 	
-	if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Paladin" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.sweepingStrikes, 1)
 		self:Sound("Beware")
 	end

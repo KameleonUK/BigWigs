@@ -136,19 +136,19 @@ end
 
 function module:Reflect()
 	self:Bar(L["bar_reflect"], timer.reflect, icon.reflect, true, color.reflect)
-	if (UnitClass("Player") ~= "Warrior") and (UnitClass("Player") ~= "Rogue") then
+	if (BigWigs:PlayerClass() ~= "WARRIOR") and (BigWigs:PlayerClass() ~= "ROGUE") then
 		self:DelayedBar(timer.reflect, L["next_reflect"], timer.reflect, icon.reflect, true, color.reflect)
 	end
 
 	if UnitName("Target") ~= nil then
 		if UnitName("Target") == "Sanctum Dragonkin" then
-			if UnitClass("Player") == "Mage" then
+			if BigWigs:PlayerClass() == "MAGE" then
 				self:WarningSign(icon.reflect, 2)
-			elseif UnitClass("Player") == "Warlock" then
+			elseif BigWigs:PlayerClass() == "WARLOCK" then
 				self:WarningSign(icon.reflect, 2)
 			end
 
-			if (UnitClass("Player") ~= "Warrior") and (UnitClass("Player") ~= "Rogue") then
+			if (BigWigs:PlayerClass() ~= "WARRIOR") and (BigWigs:PlayerClass() ~= "ROGUE") then
 				self:Message(L["msg_reflect"], "Important", false, nil, false)
 				self:Sound("Long")
 			end

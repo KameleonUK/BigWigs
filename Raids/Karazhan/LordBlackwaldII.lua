@@ -222,9 +222,9 @@ end
 function module:Boon(rest)
 	self:Bar(L["bar_boon"]..rest, timer.boon, icon.boon, true, color.boon)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.boon, 0.7)
-	elseif UnitClass("Player") == "Druid" then
+	elseif BigWigs:PlayerClass() == "DRUID" then
 		self:WarningSign(icon.boon, 0.7)
 	end
 end

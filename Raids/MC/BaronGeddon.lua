@@ -270,7 +270,7 @@ end
 function module:Ignite()
 	self:IntervalBar(L["bar_igniteCd"], timer.igniteCd[1], timer.igniteCd[2], icon.ignite, true, color.ignite)
 
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.ignite, 0.7)
 		self:Sound("Info")
 		self:Message(L["msg_ignite"], "Important", false, nil, false)

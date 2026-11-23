@@ -125,13 +125,13 @@ function module:Event(msg)
 	end
 	
 	if string.find(msg, L["trigger_volleyYou"]) then
-		if UnitClass("Player") == "Mage" then
+		if BigWigs:PlayerClass() == "MAGE" then
 			self:Message(L["msg_volley"], "Urgent", false, nil, false)
 			self:Sound("Info")
-		elseif UnitClass("Player") == "Warlock" then
+		elseif BigWigs:PlayerClass() == "WARLOCK" then
 			self:Message(L["msg_volley"], "Urgent", false, nil, false)
 			self:Sound("Info")
-		elseif UnitClass("Player") == "Priest" then
+		elseif BigWigs:PlayerClass() == "PRIEST" then
 			self:Message(L["msg_volley"], "Urgent", false, nil, false)
 			self:Sound("Info")
 		end
@@ -150,7 +150,7 @@ function module:Volley()
 	self:RemoveBar(L["bar_volley"])
 	self:Bar(L["bar_volley"], timer.volley, icon.volley, true, color.volley)
 	
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.volley, 0.7)
 	end
 end

@@ -511,7 +511,7 @@ end
 
 function module:Enlarge()
 	self:Bar(L["bar_enlarge"], timer.enlargeDuration, icon.enlarge, true, "Blue")
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:Message(L["msg_enlarge"], "Important", false, "Info")
 		self:WarningSign(icon.enlarge, 0.7)
 	else

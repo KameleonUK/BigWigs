@@ -230,9 +230,9 @@ function module:Event(msg)
 		self:Sync(syncName.breathOfSargerasCast)
 		
 	elseif string.find(msg, L["trigger_breathOfSargerasYou"]) then
-		if UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue" or UnitClass("Player") == "Hunter" then
+		if BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE" or BigWigs:PlayerClass() == "HUNTER" then
 			self:Sync(syncName.breathOfSargerasAfflic .. " " .. UnitName("Player"))
-		elseif UnitClass("Player") == "Paladin" or UnitClass("Player") == "Shaman" or UnitClass("Player") == "Druid" then
+		elseif BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "SHAMAN" or BigWigs:PlayerClass() == "DRUID" then
 			if UnitManaMax("Player") < 5000 then
 				self:Sync(syncName.breathOfSargerasAfflic .. " " .. UnitName("Player"))
 			end
@@ -292,7 +292,7 @@ function module:BreathOfSargerasCast()
 	
 	self:DelayedIntervalBar(timer.breathOfSargerasCast, L["bar_breathOfSargerasCd"], timer.breathOfSargerasCd[1], timer.breathOfSargerasCd[2], icon.breathOfSargeras, true, color.breathOfSargerasCd)
 	
-	if UnitClass("Player") == "Druid" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "MAGE" then
 		self:DelayedMessage(timer.breathOfSargerasCast, L["msg_breathOfSargeras"], "Important", false, nil, false)
 	end
 end
@@ -300,7 +300,7 @@ end
 function module:BreathOfSargerasAfflic(rest)	
 	self:Bar(rest..L["bar_breathOfSargerasAfflic"], timer.breathOfSargerasAfflic, icon.breathOfSargeras, true, color.breathOfSargerasAfflic)
 	
-	if UnitClass("Player") == "Druid" or UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "DRUID" or BigWigs:PlayerClass() == "MAGE" then
 		self:WarningSign(icon.breathOfSargeras, 1)
 	end
 end

@@ -279,7 +279,7 @@ function module:Frenzy()
 	self:Bar(L["bar_frenzyGain"], timer.frenzy, icon.frenzy, true, color.frenzyGain)
 	lastFrenzy = GetTime()
 	
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:WarningSign(icon.tranquil, timer.frenzy)
 	end
 end

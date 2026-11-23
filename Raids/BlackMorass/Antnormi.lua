@@ -173,7 +173,7 @@ end
 function module:FearCastStart()
 	self:RemoveBar(L["bar_fearCd"])
 	self:Bar(L["bar_fearCast"], timer.fearCast, icon.fear, true, color.fearCast)
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign("spell_nature_tremortotem", 0.7)
 	end
 end

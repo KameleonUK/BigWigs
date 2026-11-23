@@ -272,7 +272,7 @@ end
 
 function module:Shieldwall()
 	self:Bar(L["bar_shieldWall"], timer.shieldwall, icon.shieldwall, true, color.shieldwall)
-	if UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PRIEST" then
 		self:DelayedWarningSign(timer.shieldwall, icon.taunt, 0.7)
 		self:DelayedSound(timer.shieldwall, "Info")
 	end
@@ -284,7 +284,7 @@ end
 
 function module:McEnd(rest)
 	self:RemoveBar(rest .. L["mc_bar"])
-	if UnitClass("Player") == "Warrior" then
+	if BigWigs:PlayerClass() == "WARRIOR" then
 		self:WarningSign(icon.taunt, 0.7)
 		self:Sound("Info")
 	end

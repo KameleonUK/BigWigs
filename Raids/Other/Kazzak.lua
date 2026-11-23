@@ -243,7 +243,7 @@ function module:OnEngage()
 		self:Bar(L["bar_voidBoltCd"], timer.voidBoltCd, icon.voidBolt, true, color.voidBoltCd)
 	end
 	
-	if self.db.profile.lowmana and not (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue") then
+	if self.db.profile.lowmana and not (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE") then
 		self:ScheduleRepeatingEvent("CheckMana", self.CheckMana, 2, self)
 	end
 end
@@ -352,13 +352,13 @@ function module:MarkOfKazzak(rest)
 	self:Bar(rest..L["bar_markOfKazzakDur"], timer.markOfKazzakDur, icon.markOfKazzak, true, color.markOfKazzakDur)
 	self:Bar(L["bar_markOfKazzakCd"], timer.markOfKazzakCd, icon.markOfKazzak, true, color.markOfKazzakCd)
 	
-	if rest == UnitName("Player") and not (UnitClass("Player") == "Warrior" or UnitClass("Player") == "Rogue") then
+	if rest == UnitName("Player") and not (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "ROGUE") then
 		self:Message(L["msg_markOfKazzakYou"], "Personal", false, nil, false)
 		self:Sound("Beware")
 		self:WarningSign(icon.markOfKazzak, timer.markOfKazzakDur)
 	end
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:Message(rest..L["msg_markOfKazzak"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.markOfKazzak, timer.markOfKazzakDur)
@@ -380,7 +380,7 @@ function module:MarkOfKazzakFade(rest)
 		self:RemoveWarningSign(icon.markOfKazzak)
 	end
 	
-	if UnitClass("Player") == "Mage" or UnitClass("Player") == "Druid" then
+	if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "DRUID" then
 		self:RemoveWarningSign(icon.markOfKazzak)
 	end
 	
@@ -397,7 +397,7 @@ function module:TwistedReflection(rest)
 	self:Bar(rest..L["bar_twistedReflectionDur"], timer.twistedReflectionDur, icon.twistedReflection, true, color.twistedReflectionDur)
 	self:Bar(L["bar_twistedReflectionCd"], timer.twistedReflectionCd, icon.twistedReflection, true, color.twistedReflectionCd)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:Message(rest..L["msg_twistedReflection"], "Urgent", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.twistedReflection, timer.twistedReflectionDur)
@@ -415,7 +415,7 @@ end
 function module:TwistedReflectionFade(rest)
 	self:RemoveBar(rest..L["bar_twistedReflectionDur"])
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:RemoveWarningSign(icon.twistedReflection)
 	end
 	

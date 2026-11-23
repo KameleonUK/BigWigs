@@ -351,7 +351,7 @@ function module:TrueEngage()
 		self:Bar(L["bar_knockbackCd"], timer.knockbackCd, icon.knockback, true, color.knockbackCd)
 		self:DelayedBar(timer.knockbackCd, L["bar_knockbackSoon"], timer.knockbackSoon, icon.knockback, true, color.knockbackSoon)
 		
-		if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Warlock") then
+		if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "WARLOCK") then
 			self:DelayedWarningSign(timer.knockbackCd - 3, icon.knockback, 10)
 			self:DelayedMessage(timer.knockbackCd - 3, L["msg_knockbackSoon"], "Urgent", false, nil, false)
 			self:DelayedSound(timer.knockbackCd - 3, "RunAway")
@@ -421,7 +421,7 @@ function module:Knockback()
 	self:Bar(L["bar_knockbackCd"], timer.knockbackCd, icon.knockback, true, color.knockbackCd)
 	self:DelayedBar(timer.knockbackCd, L["bar_knockbackSoon"], timer.knockbackSoon, icon.knockback, true, color.knockbackSoon)
 	
-	if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Warlock") then
+	if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "WARLOCK") then
 		self:DelayedWarningSign(timer.knockbackCd - 3, icon.knockback, 12)
 		self:DelayedMessage(timer.knockbackCd - 3, L["msg_knockbackSoon"], "Urgent", false, nil, false)
 		self:DelayedSound(timer.knockbackCd - 3, "RunAway")
@@ -478,7 +478,7 @@ function module:Emerge()
 			self:Bar(L["bar_knockbackCd"], knockbackTimeLeft - timer.knockbackSoon, icon.knockback, true, color.knockbackCd)
 			self:DelayedBar(knockbackTimeLeft - timer.knockbackSoon, L["bar_knockbackSoon"], timer.knockbackSoon, icon.knockback, true, color.knockbackSoon)
 			
-			if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Warlock") then
+			if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "WARLOCK") then
 				self:DelayedWarningSign(knockbackTimeLeft - timer.knockbackSoon - 3, icon.knockback, 12)
 				self:DelayedMessage(knockbackTimeLeft - timer.knockbackSoon - 3, L["msg_knockbackSoon"], "Urgent", false, nil, false)
 				self:DelayedSound(knockbackTimeLeft - timer.knockbackSoon - 3, "RunAway")
@@ -486,7 +486,7 @@ function module:Emerge()
 			
 			--if timeLeft is 0, expect knockback right the hell now
 		elseif knockbackTimeLeft <= 0 then
-			if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Warlock") then
+			if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "WARLOCK") then
 				self:WarningSign(icon.knockback, 12)
 				self:Message(L["msg_knockbackSoon"], "Urgent", false, nil, false)
 				self:Sound("RunAway")
@@ -496,7 +496,7 @@ function module:Emerge()
 		else
 			self:Bar(L["bar_knockbackSoon"], knockbackTimeLeft, icon.knockback, true, color.knockbackSoon)
 			
-			if not (UnitClass("Player") == "Mage" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Warlock") then
+			if not (BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "WARLOCK") then
 				self:WarningSign(icon.knockback, knockbackTimeLeft + 1)
 				self:Message(L["msg_knockbackSoon"], "Urgent", false, nil, false)
 				self:Sound("RunAway")

@@ -241,10 +241,10 @@ function module:OnEngage()
 		self:Bar(L["bar_enrageCD"], timer.silencedEnrage - 1, icon.enrage, true, "red")
 	end
 	
-	if UnitClass("player") == "Priest" and self.db.profile.bigicon then
+	if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.bigicon then
 		self:DelayedWarningSign(timer.silencedEnrage - 12, icon.mc, 0.7)
 	end
-	if UnitClass("player") == "Priest" and self.db.profile.sounds then
+	if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.sounds then
 		self:DelayedSound(timer.silencedEnrage - 12, "Info")
 	end
 end
@@ -325,7 +325,7 @@ end
 
 
 function module:Poison()
-	if UnitClass("player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.poison, 0.7)
 	end
 end
@@ -382,10 +382,10 @@ function module:Embrace()
 			self:Bar(L["bar_enrageCD"], timer.silencedWithoutEnrage, icon.enrage, true, "red")
 			self:DelayedMessage(timer.silencedWithoutEnrage - 10, L["msg_enrageSoon"], "Urgent", nil, nil)
 		end
-		if UnitClass("player") == "Priest" and self.db.profile.bigicon then
+		if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.bigicon then
 			self:DelayedWarningSign(timer.silencedWithoutEnrage - 10, icon.mc, 0.7)
 		end
-		if UnitClass("player") == "Priest" and self.db.profile.sounds then
+		if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.sounds then
 			self:DelayedSound(timer.silencedWithoutEnrage - 10, "Info")
 		end
 		
@@ -419,10 +419,10 @@ function module:Embrace()
 			self:Bar(L["bar_enrageCD"], timer.silencedWithoutEnrage, icon.enrage, true, "red")
 			self:DelayedMessage(timer.silencedWithoutEnrage - 10, L["msg_enrageSoon"], "Urgent", nil, nil)
 		end
-		if UnitClass("player") == "Priest" and self.db.profile.bigicon then
+		if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.bigicon then
 			self:DelayedWarningSign(timer.silencedWithoutEnrage - 10, icon.mc, 0.7)
 		end
-		if UnitClass("player") == "Priest" and self.db.profile.sounds then
+		if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.sounds then
 			self:DelayedSound(timer.silencedWithoutEnrage - 10, "Info")
 		end
 	end
@@ -442,10 +442,10 @@ function module:Enrage()
 		self:Message(L["msg_enrageGain"], nil, nil, false)
 		self:Bar(L["bar_enrageGain"], timer.silencedEnrage, icon.enrage, true, "red")
 		
-		if (UnitClass("player") == "Warrior" or UnitClass("player") == "Priest") and self.db.profile.bigicon then
+		if (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "PRIEST") and self.db.profile.bigicon then
 			self:WarningSign(icon.enrage, 0.7)
 		end
-		if (UnitClass("player") == "Warrior" or UnitClass("player") == "Priest") and self.db.profile.sounds then
+		if (BigWigs:PlayerClass() == "WARRIOR" or BigWigs:PlayerClass() == "PRIEST") and self.db.profile.sounds then
 			self:Sound("Info")
 		end
 	end
@@ -469,10 +469,10 @@ function module:EnrageFade()
 		self:Bar(L["bar_enrageCD"], timer.silencedEnrage, icon.enrage, true, "red")
 		self:DelayedMessage(timer.silencedEnrage - 10, L["msg_enrageSoon"], "Urgent", nil, nil)
 	end
-	if UnitClass("player") == "Priest" and self.db.profile.bigicon then
+	if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.bigicon then
 		self:DelayedWarningSign(timer.silencedEnrage - 10, icon.mc, 0.7)
 	end
-	if UnitClass("player") == "Priest" and self.db.profile.sounds then
+	if BigWigs:PlayerClass() == "PRIEST" and self.db.profile.sounds then
 		self:DelayedSound(timer.silencedEnrage - 10, "Info")
 	end
 end

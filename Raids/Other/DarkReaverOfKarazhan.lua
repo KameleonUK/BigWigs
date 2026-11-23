@@ -364,7 +364,7 @@ function module:LurkingShadowSpawn(rest)
 	
 	self:Message(rest..L["msg_lurkingShadowSpawn"], "Attention", false, nil, false)
 	
-	if string.lower(UnitClass("Player")) == rest then
+	if string.lower(BigWigs:PlayerClass()) == rest then
 		self:Sound("Beware")
 		self:WarningSign(icon.lurkingShadowSpawn, 1)
 	end

@@ -379,13 +379,13 @@ function module:Heal()
 	self:Bar(L["bar_healCast"], timer.healCast, icon.heal, true, color.healCast)
 	self:Message(L["msg_healCast"], "Positive", false, nil, false)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:Sound("Beware")
 		self:WarningSign(icon.heal, 0.7)
-	elseif UnitClass("Player") == "Warrior" then
+	elseif BigWigs:PlayerClass() == "WARRIOR" then
 		self:Sound("Beware")
 		self:WarningSign(icon.heal, timer.healCast)
-	elseif UnitClass("Player") == "Rogue" then
+	elseif BigWigs:PlayerClass() == "ROGUE" then
 		self:Sound("Beware")
 		self:WarningSign(icon.heal, timer.healCast)
 	end
@@ -415,13 +415,13 @@ function module:MindFlay()
 	castingMindFlay = true
 	self:Bar(L["bar_mindflay"], timer.mindflay, icon.mindflay, true, color.mindflay)
 	
-	if UnitClass("Player") == "Mage" then
+	if BigWigs:PlayerClass() == "MAGE" then
 		self:Sound("Alarm")
 		self:WarningSign(icon.mindflay, 0.7)
-	elseif UnitClass("Player") == "Warrior" then
+	elseif BigWigs:PlayerClass() == "WARRIOR" then
 		self:Sound("Alarm")
 		self:WarningSign(icon.mindflay, timer.mindflay)
-	elseif UnitClass("Player") == "Rogue" then
+	elseif BigWigs:PlayerClass() == "ROGUE" then
 		self:Sound("Alarm")
 		self:WarningSign(icon.mindflay, timer.mindflay)
 	end

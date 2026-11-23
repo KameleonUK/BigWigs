@@ -94,6 +94,13 @@ local vulnAura = {
 	[33003] = "shadow",
 	[33004] = "frost",
 	[33005] = "arcane",
+	-- "Elemental Shield", what the server script (npc_death_talon) applies: -75% magic damage taken,
+	-- +1100% for one school, so the vulnerable school takes 3x and the others a quarter
+	[22277] = "fire",
+	[22278] = "frost",
+	[22279] = "shadow",
+	[22280] = "nature",
+	[22281] = "arcane",
 }
 
 -- A hit from the same caster with the same spell on two Wyrmguards: the vulnerable one takes double,
@@ -146,7 +153,7 @@ end
 
 function module:OnEnable()
 	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE", "RANGE_DAMAGE"}, nil, "DamageEvent")
-	self:RegisterCombatLog("SPELL_AURA_APPLIED", {33001, 33002, 33003, 33004, 33005}, "AuraEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {33001, 33002, 33003, 33004, 33005, 22277, 22278, 22279, 22280, 22281}, "AuraEvent")
 	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, {L["warstomp_spell"]}, "WarStompEvent")
 
 	-- the aura, read straight from any token that shows a Wyrmguard

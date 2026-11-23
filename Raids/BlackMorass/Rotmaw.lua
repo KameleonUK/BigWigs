@@ -150,7 +150,7 @@ end
 function module:ContagionOfRot(rest)
 	self:Bar(rest..L["bar_contagionOfRot"], timer.contagionOfRot, icon.contagionOfRot, true, color.contagionOfRot)
 	
-	if UnitClass("Player") == "Paladin" or UnitClass("Player") == "Priest" or UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "PALADIN" or BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.contagionOfRot, 0.7)
 	end
 end

@@ -4,6 +4,7 @@ local module, L = BigWigs:ModuleDeclaration("Erennius", "Emerald Sanctum")
 module.revision = 30020
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wailoferennius", "howloferennius", "volley", "bosskill"}
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Erennius",
@@ -21,17 +22,13 @@ L:RegisterTranslations("enUS", function() return {
 	volley_desc = "Warns for Poison Volley",
 	
 	--Erennius vv
-	trigger_wailOfErenniusCast = "Erennius begins to cast Wail of Erennius.",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_wailOfErenniusCast = "Wail Casting",
 	bar_wailOfErenniusAfflicted = "Wail Afflicted",
 	bar_wailOfErenniusCd = "Wail of Erennius CD",
 	
-	trigger_howlOfErennius = "afflicted by Howl of Erennius",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_howlOfErenniusResist = "Howl of Erennius was resisted",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
 	bar_howlOfErenniusCD = "Silence CD",
 	bar_howlOfErenniusAfflicted = "Silenced!",
 	
-	trigger_volley = "afflicted by Poison Bolt Volley",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	bar_volley = "Poison Bolt Volley",
 	--Erennius ^^
 	
@@ -57,23 +54,22 @@ L:RegisterTranslations("zhCN", function() return {
     volley_desc = "毒箭齐射出现时进行警告",
     
     --Erennius vv
-    trigger_wailOfErenniusCast = "埃伦纽斯开始施放",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_wailOfErenniusCast = "正在施放群体睡眠",
     bar_wailOfErenniusAfflicted = "群体睡眠",
     bar_wailOfErenniusCd = "群体睡眠冷却",
     
-    trigger_howlOfErennius = "受到了埃伦纽斯之嚎效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_howlOfErenniusResist = "Howl of Erennius was resisted",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
     bar_howlOfErenniusCD = "沉默冷却",
     bar_howlOfErenniusAfflicted = "沉默！",
     
-    trigger_volley = "受到了毒箭之雨效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     bar_volley = "毒箭齐射",
     --Erennius ^^
     
     trigger_someYell = "Your efforts...",
 } end )
+-- Server script (erenniusAI in instance_emerald_sanctum.cpp): Howl first at 37s, then every 30-33s;
+-- Poison Bolt Volley every 9-13s; Wail of Erennius every 35s, only while Solnius is alive and in combat.
 local timer = {
+	howlOfErenniusFirstCd = 37,
 	wailOfErenniusCast = 6,
 	wailOfErenniusAfflicted = 3,
 	wailOfErenniusCd = 26,
@@ -101,14 +97,20 @@ local syncName = {
 	volley = "ErenniusVolley"..module.revision,
 }
 
+-- spell IDs (from the server script), with the English name as a fallback match (see RegisterCombatLog in Core.lua)
+local spell = {
+	wail = {46080, "Wail of Erennius"},
+	howl = {56506, "Howl of Erennius"},
+	volley = {24099, "Poison Bolt Volley"},
+}
+
 --module:RegisterYellEngage(L["trigger_engage"])
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_wailOfErennius, trigger_howlOfErenniusResist
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_howlOfErennius, trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_howlOfErenniusResist
+	self:RegisterCombatLog("SPELL_CAST_START", spell.wail, "WailEvent")
+	-- a silence landing or being resisted both mean Howl went out
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, spell.howl, "HowlEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED"}, spell.volley, "VolleyEvent")
 
 	self:ThrottleSync(10, syncName.wailOfErenniusCast)
 	self:ThrottleSync(10, syncName.howlOfErennius)
@@ -120,23 +122,33 @@ function module:OnSetup()
 end
 
 function module:OnEngage()
+	if self.db.profile.howloferennius then
+		self:Bar(L["bar_howlOfErenniusCD"], timer.howlOfErenniusFirstCd, icon.howlOfErennius, true, color.howlOfErennius)
+	end
 end
 
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_wailOfErenniusCast"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+-- (the Sanctum Wyrms cast Poison Bolt Volley too, so each checks the caster)
+function module:WailEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.wailOfErenniusCast)
-	
-	elseif string.find(msg, L["trigger_howlOfErennius"]) or string.find(msg, L["trigger_howlOfErenniusResist"]) then
-		self:Sync(syncName.howlOfErennius)
-		
-	elseif string.find(msg, L["trigger_volley"]) then
-		self:Sync(syncName.volley)
 	end
 end
 
+function module:HowlEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.howlOfErennius)
+	end
+end
+
+function module:VolleyEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.volley)
+	end
+end
 
 function module:BigWigs_RecvSync(sync, rest, nick)
 	if sync == syncName.wailOfErenniusCast and self.db.profile.wailoferennius then
@@ -165,7 +177,7 @@ end
 function module:Volley()
 	self:Bar(L["bar_volley"], timer.volley, icon.volley, true, color.volley)
 	
-	if UnitClass("Player") == "Shaman" then
+	if BigWigs:PlayerClass() == "SHAMAN" then
 		self:WarningSign(icon.volley, 0.7)
 	end
 end

@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## X-Revision: 30146
 ## X-Fork: Pepo
-## Title: |cFFFF8080Pepopo|r Big Wigs |cff7fff7f30146|r |cffabd473Turtle-WoW|r |cffc8a2c8(Requires Classic API)|r
+## Title: Big Wigs |cffabd473Turtle-WoW|r |cffc8a2c8(Requires Classic API)|r
 ## Title-zhCN: |cffabd473Turtle-WoW|r Big Wigs |cffc8a2c8(Requires Classic API)|r
 ## Notes: Boss Mods with Timer bars. This build only runs with the ClassicAPI DLL; ClassicAPI loads BigWigs_ClassicAPI.toc instead of this file.
 ## Notes-esES: Módulos para Jefes con barras temporizadoras.
@@ -19,3 +19,4 @@
 ## X-Embeds: Ace2, FuBarPlugin-2.0, Babble-2.2, CandyBar, CompostLib, DewdropLib, PaintChipsLib, TabletLib, SurfaceLib
 
 classicapi_required.lua
+\

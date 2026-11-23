@@ -257,7 +257,8 @@ function module:Event(msg)
 	
 	elseif string.find(msg, L["trigger_flameBreathDotOther"]) then
 		local _,_,flameBreathDotPlayer,flameBreathDotQty = string.find(msg, L["trigger_flameBreathDotOther"])
-		if tonumber(flameBreathDotQty) >= 3 then
+		-- player names have no spaces; totems and pets that catch the breath (e.g. "Fire Resistance Totem") are skipped
+		if not string.find(flameBreathDotPlayer, " ", 1, true) and tonumber(flameBreathDotQty) and tonumber(flameBreathDotQty) >= 3 then
 			local playerAndQuantity = flameBreathDotPlayer .. " " .. flameBreathDotQty
 			self:Sync(syncName.flameBreathDot.." "..playerAndQuantity)
 		end
@@ -417,8 +418,11 @@ function module:FlameBreath()
 end
 
 function module:FlameBreathDot(rest)
-	local flameBreathDotPlayer = strsub(rest,0,strfind(rest," ") - 1)
-	local flameBreathDotQty = tonumber(strsub(rest,strfind(rest," "),strlen(rest)))
+	-- "<name> <stacks>"; split at the last space so a sync from an older build naming a totem can't break it
+	local _, _, flameBreathDotPlayer, flameBreathDotQty = string.find(rest, "^(.+) (%d+)$")
+	if not flameBreathDotPlayer then
+		return
+	end
 	
 	self:RemoveBar(flameBreathDotPlayer.." ".."3"..L["bar_flameBreathDot"])
 	self:RemoveBar(flameBreathDotPlayer.." ".."4"..L["bar_flameBreathDot"])

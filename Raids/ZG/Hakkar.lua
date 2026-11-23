@@ -546,7 +546,7 @@ function module:CauseInsanity(rest)
 			TargetByName(extra, true)
 		end, rest)
 
-		if UnitClass("Player") == "Mage" or UnitClass("Player") == "Warlock" then
+		if BigWigs:PlayerClass() == "MAGE" or BigWigs:PlayerClass() == "WARLOCK" then
 			self:Message(rest .. L["msg_causeInsanity"], "Attention", false, nil, false)
 			self:Sound("Info")
 			self:WarningSign(icon.causeInsanity, 0.7)
@@ -575,10 +575,10 @@ function module:CauseInsanityFade(rest)
 
 	self:Bar(L["bar_causeInsanityCd"], timer.causeInsanityCd, icon.causeInsanity, true, color.causeInsanityCd)
 
-	if UnitClass("Player") == "Priest" then
+	if BigWigs:PlayerClass() == "PRIEST" then
 		self:WarningSign(icon.priestDispel, 0.7)
 		self:Sound("Info")
-	elseif UnitClass("Player") == "Paladin" then
+	elseif BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.paladinDispel, 0.7)
 		self:Sound("Info")
 	end
@@ -628,7 +628,7 @@ function module:AspectJeklik()
 	self:Bar(L["bar_aspectOfJeklikDur"], timer.jeklikDur, icon.jeklik, true, color.jeklikDur)
 	self:DelayedBar(timer.jeklikDur, L["bar_aspectOfJeklikCd"], timer.jeklikCd, icon.jeklik, true, color.jeklikCd)
 
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then
 		self:WarningSign(icon.jeklik, 0.7)
 		self:Sound("Info")
 	end
@@ -657,7 +657,7 @@ function module:AspectThekalStart()
 
 	self:Bar(L["bar_aspectOfThekalDur"], timer.thekalDur, icon.thekal, true, color.thekalDur)
 
-	if UnitClass("Player") == "Hunter" then
+	if BigWigs:PlayerClass() == "HUNTER" then
 		self:Message(L["msg_aspectOfThekal"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.thekal, 1)

@@ -491,7 +491,7 @@ end
 function module:Polymorph(rest)
 	self:Bar(rest..L["bar_poly"], timer.polymorph, icon.polymorph, true, color.polymorph)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then 
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then 
 		self:Message(rest..L["msg_poly"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.polymorph, 1)
@@ -505,7 +505,7 @@ end
 function module:Mc(rest)
 	self:Bar(rest..L["bar_mc"], timer.mc, icon.mc, true, color.mc)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then 
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then 
 		self:Message(rest..L["msg_mc"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.mc, 1)
@@ -519,7 +519,7 @@ end
 function module:Slow()
 	self:Bar(L["bar_slow"], timer.slow, icon.slow, true, color.slow)
 	
-	if UnitClass("Player") == "Priest" or UnitClass("Player") == "Paladin" then 
+	if BigWigs:PlayerClass() == "PRIEST" or BigWigs:PlayerClass() == "PALADIN" then 
 		self:Message(L["msg_slow"], "Important", false, nil, false)
 		self:Sound("Info")
 		self:WarningSign(icon.slow, 1)

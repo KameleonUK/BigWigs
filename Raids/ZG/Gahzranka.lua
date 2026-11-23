@@ -153,15 +153,15 @@ function module:Event(msg)
 	
 	
 	elseif string.find(msg, L["trigger_frostbreathYou"]) then
-		if UnitClass("Player") == "Priest" then
+		if BigWigs:PlayerClass() == "PRIEST" then
 			self:WarningSign(icon.frostbreath, 0.7)
 			self:Sound("Info")
 			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
-		elseif UnitClass("Player") == "Mage" then
+		elseif BigWigs:PlayerClass() == "MAGE" then
 			self:WarningSign(icon.frostbreath, 0.7)
 			self:Sound("Info")
 			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
-		elseif UnitClass("Player") == "Warlock" then
+		elseif BigWigs:PlayerClass() == "WARLOCK" then
 			self:WarningSign(icon.frostbreath, 0.7)
 			self:Sound("Info")
 			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
