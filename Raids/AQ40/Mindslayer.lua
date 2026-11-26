@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Qiraji Mindslayer", "Ahn'Qiraj")
 
 module.revision = 30075
+module.combatLog = true -- triggers from the combat log; a kill does not end the module (as before)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"mc", "mindflay", "disorient"}
 module.trashMod = true
@@ -25,19 +26,11 @@ L:RegisterTranslations("enUS", function() return {
 	disorient_desc = "Warn for Mana Burn Disorient",
 	
 	
-	trigger_mcYou = "You are afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_mcOther2 = "(.+) %(.+%) is afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcOther = "(.+) is afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcFade = "Cause Insanity fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_mc = " MC",
 	msg_mc = "MC on ",
 
-	trigger_mindFlayYou = "You are afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_mindFlayOther = "(.*) is afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mindFlayFade = "Mind Flay fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_mindFlay = " Mind Flay",
 	
-	trigger_disorient = "afflicted by Mana Burn.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
 	bar_disorient = "Mana Burn & Disorient",
 	msg_disorientSoon = "Qiraji Mindslayer < 20% HP - 30 Yards Mana Burn & Disorient Soon!",
 	
@@ -63,18 +56,11 @@ L:RegisterTranslations("zhCN", function() return {
     disorient_desc = "法力燃烧&迷惑出现时进行警告",
 
 
-    trigger_mcYou = "You are afflicted by Cause Insanity.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_mcOther = "(.+) is afflicted by Cause Insanity.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_mcFade = "Cause Insanity fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_mc = " 精神控制",
     msg_mc = "精神控制在 ",
 
-    trigger_mindFlayYou = "You are afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_mindFlayOther = "(.*) is afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_mindFlayFade = "Mind Flay fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_mindFlay = " 精神鞭笞",
 
-    trigger_disorient = "afflicted by Mana Burn.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
     bar_disorient = "法力燃烧&迷惑",
     msg_disorientSoon = "其拉斩灵者血量 < 20% HP - 即将出现30码范围法力燃烧&迷惑！",
 
@@ -111,15 +97,13 @@ local disorientSoonCheck = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Cause Insanity", "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Cause Insanity", "McFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Mind Flay", "MindFlayEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Mind Flay", "MindFlayFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Mana Burn", "DisorientEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event")
 	
 	self:RegisterEvent("UNIT_HEALTH")
 	
@@ -135,7 +119,6 @@ end
 function module:OnSetup()
 	self.started = nil
 	
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -149,47 +132,7 @@ function module:OnDisengage()
 	disorientSoonCheck = true
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-end
-
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName)
-		or msg == string.format(L["You have slain %s!"], "Qiraji Champion") then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("Target") and UnitAffectingCombat("Target") then
-				local target = UnitName("Target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			--self:SendBossDeathSync()
-		end
-	end
+function module:BossUnitDied(ev)
 end
 
 function module:UNIT_HEALTH(msg)
@@ -201,31 +144,33 @@ function module:UNIT_HEALTH(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_mcYou"] then
-		self:Sync(syncName.mc .. " " .. UnitName("player"))
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _,_, mcPlayer, _ = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _,_, mcPlayer, _ = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _,_, mcFadePlayer, _ = string.find(msg, L["trigger_mcFade"])
-		if mcFadePlayer == "you" then mcFadePlayer = UnitName("Player") end
-		self:Sync(syncName.mcFade .. " " .. mcFadePlayer)
-	
-	elseif msg == L["trigger_mindFlayYou"] then
-		self:Sync(syncName.mindFlay .. " " .. UnitName("player"))
-	elseif string.find(msg, L["trigger_mindFlayOther"]) then
-		local _,_, mindFlayPlayer, _ = string.find(msg, L["trigger_mindFlayOther"])
-		self:Sync(syncName.mindFlay .. " " .. mindFlayPlayer)
-	elseif string.find(msg, L["trigger_mindFlayFade"]) then
-		local _,_, mindFlayFadePlayer, _ = string.find(msg, L["trigger_mindFlayFade"])
-		if mindFlayFadePlayer == "you" then mindFlayFadePlayer = UnitName("Player") end
-		self:Sync(syncName.mindFlayFade .. " " .. mindFlayFadePlayer)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_disorient"]) then
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
+	end
+end
+
+function module:MindFlayEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.mindFlay .. " " .. ev.destName)
+	end
+end
+
+function module:MindFlayFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.mindFlayFade .. " " .. ev.destName)
+	end
+end
+
+function module:DisorientEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.disorient)
 	end
 end

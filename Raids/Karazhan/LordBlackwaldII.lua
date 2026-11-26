@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Lord Blackwald II", "Karazhan")
 
 module.revision = 30029
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"reaverstorm", "boon", "empoweredsoul", "summon", "bosskill"}
 module.zonename = {
@@ -30,17 +31,11 @@ L:RegisterTranslations("enUS", function() return {
 	
 	
 	
-	trigger_reaverstorm = "Lord Blackwald II begins to perform Reaver Storm.",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_reaverstormCd = "Reaver Storm CD",
 	bar_reaverstormCast = "Reaver Storm Cast",
 	
-	trigger_boonYou = "You are afflicted by Blackwalds Boon.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_boonOther = "(.+) is afflicted by Blackwalds Boon.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_boonFade = "Blackwalds Boon fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_boon = "Boon on ",
 	
-	trigger_empoweredSoulYou = "You are afflicted by Empowered Soul.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_empoweredSoulOther = "(.+) is afflicted by Empowered Soul.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_empoweredSoul = " Empowered",
 
 	trigger_yellSummon = "I call upon the Scythe of Elune, grant me your power!",--CHAT_MSG_MONSTER_YELL
@@ -74,17 +69,11 @@ L:RegisterTranslations("zhCN", function() return {
     
 
     
-    trigger_reaverstorm = "Lord Blackwald II begins to perform Reaver Storm.",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_reaverstormCd = "掠夺者风暴冷却",
     bar_reaverstormCast = "掠夺者风暴施放",
     
-    trigger_boonYou = "You are afflicted by Blackwalds Boon.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_boonOther = "(.+) is afflicted by Blackwalds Boon.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-    trigger_boonFade = "Blackwalds Boon fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_boon = "恩赐 ",
     
-    trigger_empoweredSoulYou = "You are afflicted by Empowered Soul.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_empoweredSoulOther = "(.+) is afflicted by Empowered Soul.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     bar_empoweredSoul = " 强化灵魂",
     
     trigger_yellSummon = "I call upon the Scythe of Elune, grant me your power!",--CHAT_MSG_MONSTER_YELL
@@ -128,14 +117,11 @@ local syncName = {
 
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_reaverstorm
+	self:RegisterCombatLog("SPELL_CAST_START", "Reaver Storm", "ReaverStormEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Blackwalds Boon", "BoonEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Blackwalds Boon", "BoonFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Empowered Soul", "EmpoweredSoulEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_boonYou, trigger_empoweredSoulYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_boonOther, trigger_empoweredSoulOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_boonOther, trigger_empoweredSoulOther
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_boonFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_boonFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_boonFade
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_yellSummon
 	
@@ -166,34 +152,28 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_reaverstorm"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ReaverStormEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.reaverstorm)
-	
-	
-	elseif msg == L["trigger_boonYou"] then
-		self:Sync(syncName.boon .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_boonOther"]) then
-		local _,_, boonPlayer, _ = string.find(msg, L["trigger_boonOther"])
-		self:Sync(syncName.boon .. " " .. boonPlayer)
-	
-	elseif string.find(msg, L["trigger_boonFade"]) then
-		local _,_, boonFadePlayer, _ = string.find(msg, L["trigger_boonFade"])
-		if boonFadePlayer == "you" then boonFadePlayer = UnitName("Player") end
-		self:Sync(syncName.boonFade .. " " .. boonFadePlayer)
+	end
+end
 
+function module:BoonEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.boon .. " " .. ev.destName)
+	end
+end
 
-	elseif msg == L["trigger_empoweredSoulYou"] then
-		self:Sync(syncName.empoweredSoul .. " " .. UnitName("Player"))
-		
-	elseif string.find(msg, L["trigger_empoweredSoulOther"]) then
-		local _,_, empoweredSoulPlayer, _ = string.find(msg, L["trigger_empoweredSoulOther"])
-		self:Sync(syncName.empoweredSoul .. " " .. empoweredSoulPlayer)
-		
-	--elseif msg == L["trigger_yellSummon"] then
-	--	self:Sync(syncName.summon)
-		
+function module:BoonFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.boonFade .. " " .. ev.destName)
+	end
+end
+
+function module:EmpoweredSoulEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.empoweredSoul .. " " .. ev.destName)
 	end
 end
 

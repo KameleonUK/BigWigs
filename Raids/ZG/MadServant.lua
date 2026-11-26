@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Mad Servant", "Zul'Gurub")
 
 module.revision = 30059
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = {}--module.translatedName
 module.toggleoptions = {"portal"}
 module.trashMod = true
@@ -17,7 +18,6 @@ L:RegisterTranslations("enUS", function() return {
 	portal_name = "Portal Alert",
 	portal_desc = "Warn Portal of Madness.",
 
-	trigger_portal = "Mad Servant casts Portal of Madness.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 	bar_portal = "Void Spawn - Portal ",
 	msg_portal = "D E L A Y  killing other imps if you value your life!",
 } end )
@@ -36,7 +36,6 @@ L:RegisterTranslations("zhCN", function() return {
     portal_name = "传送门警报",
     portal_desc = "疯狂之门出现警告。",
 
-    trigger_portal = "Mad Servant casts Portal of Madness.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     bar_portal = "虚空产生 - 传送门 ",
     msg_portal = "如果你想保命，那就暂缓击杀其他小鬼！",
 } end )
@@ -62,7 +61,7 @@ end
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event")--trigger_portal
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", "Portal of Madness", "PortalEvent")
 end
 
 function module:OnSetup()
@@ -86,8 +85,9 @@ function module:MINIMAP_ZONE_CHANGED(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_portal"] and self.db.profile.portal then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:PortalEvent(ev)
+	if ev.sourceName == "Mad Servant" and self.db.profile.portal then
 		self:Portal()
 	end
 end

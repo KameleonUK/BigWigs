@@ -3,6 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("Razorgore the Untamed", "Blackwing 
 local controller = AceLibrary("Babble-Boss-2.2")["Grethok the Controller"]
 
 module.revision = 30141
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = {"Razorgore the Untamed", "Grethok the Controller"}
 module.toggleoptions = {"polymorph", "dominatemind", "icon", "slow", -1, "phase", "eggs", "orb", "mindexhaustion", -1, "volley", "conflagration", "warstomp", "bosskill"}
 
@@ -62,20 +63,12 @@ L:RegisterTranslations("enUS", function() return {
 --Phase 1
 	trigger_engage = "Intruders have breached the hatchery!", --CHAT_MSG_MONSTER_YELL
 	
-	trigger_polyYou = "You are afflicted by Greater Polymorph.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_polyOther = "(.+) is afflicted by Greater Polymorph.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_polyFade = "Greater Polymorph fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY //CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_poly = " Polymorph",
 	msg_poly = " Polymorphed - Dispel!",
 	
-	trigger_mcYou =  "You are afflicted by Dominate Mind", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE --guessing
-	trigger_mcOther2 = "(.+) %(.+%) is afflicted by Dominate Mind", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE --guessing
-	trigger_mcOther = "(.+) is afflicted by Dominate Mind", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE --guessing
-	trigger_mcFade = "Dominate Mind fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY //CHAT_MSG_SPELL_AURA_GONE_OTHER --guessing
 	bar_mc = " MC",
 	msg_mc = " MC - Dispel!",
 	
-	trigger_slow = "afflicted by Slow.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_slow = "Slowed",
 	msg_slow = "Slow - Dispel!",
 	
@@ -84,7 +77,6 @@ L:RegisterTranslations("enUS", function() return {
 		--timer for mobs spawn starts when?
 	bar_mobsSpawn = "Mobs Spawn",
 	
-	trigger_destroyEggCast = "Razorgore the Untamed begins to cast Destroy Egg.", --CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF
 	bar_destroyEggCast = "Destroying Egg",
 	bar_destroyEggCd = "Destroy Egg CD",
 	
@@ -97,9 +89,6 @@ L:RegisterTranslations("enUS", function() return {
 	bar_eggsCounter = "Eggs Left",
 	msg_eggCounter = "/"..eggsTotal.." Eggs Destroyed",
 	
-	trigger_mindExhaustionYou = "You are afflicted by Mind Exhaustion.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_mindExhaustionOther = "(.+) is afflicted by Mind Exhaustion.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_mindExhaustionFade = "Mind Exhaustion fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY //CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_mindExhaustion = " Mind Exhaustion",
 	
 		--there is no orb control trigger, aside from gain mind exhaustion
@@ -114,22 +103,16 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_phase3 = "troops flee as the power of the controlling power of the orb is drained.", --CHAT_MSG_MONSTER_EMOTE
 	msg_phase3 = "All Eggs are Destroyed - Phase 3 - Razorgore is free!",
 	
-	trigger_volleyCast = "Razorgore the Untamed begins to cast Fireball Volley.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_volleyCd = "Fireball Volley CD",
 	bar_volleyCast = "Casting Fireball Volley",
 	msg_volley = "Fireball Volley - Hide!",
 	
-	trigger_conflagrationYou = "You are afflicted by Conflagration.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_conflagrationOther = "(.+) is afflicted by Conflagration.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_conflagrationFade = "Conflagration fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY //CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_conflagrationCd = "Conflagration CD",
 	bar_conflagrationDur = " Conflagration",
 	msg_conflagration = " Conflagration",
 	
-	trigger_conflagHitYou = "Conflagration hits you for", --CHAT_MSG_SPELL_SELF_DAMAGE
 	msg_conflagHitYou = "Move away from Conflag'd person you idiot!!!",
 	
-	trigger_warStomp = "Razorgore the Untamed's War Stomp", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_warStompDur = "War Stomped",
 	bar_warStompCd = "War Stomp CD",
 } end)
@@ -244,21 +227,24 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_EMOTE") --trigger_phase3
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_polyYou, trigger_mcYou, trigger_slow, trigger_mindExhaustionYou, trigger_conflagrationYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_polyOther, trigger_mcOther, trigger_slow, trigger_mindExhaustionOther, trigger_conflagrationOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_polyOther, trigger_mcOther, trigger_slow, trigger_mindExhaustionOther, trigger_conflagrationOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {22274, "Greater Polymorph"}, "PolyEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {22274, "Greater Polymorph"}, "PolyFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {14515, "Dominate Mind"}, "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {14515, "Dominate Mind"}, "McFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {13747, "Slow"}, "SlowEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {19873, "Destroy Egg"}, "DestroyEggEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {23958, "Mind Exhaustion"}, "MindExhaustionEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {23958, "Mind Exhaustion"}, "MindExhaustionFadeEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {22425, "Fireball Volley"}, "VolleyEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {23023, "Conflagration"}, "ConflagrationEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {23023, "Conflagration"}, "ConflagrationFadeEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", {23023, "Conflagration"}, "ConflagrationHitEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {24375, "War Stomp"}, "WarStompEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_polyFade, trigger_mcFade, trigger_mindExhaustionFade, trigger_conflagrationFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_polyFade, trigger_mcFade, trigger_mindExhaustionFade, trigger_conflagrationFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_polyFade, trigger_mcFade, trigger_mindExhaustionFade, trigger_conflagrationFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF", "Event") --trigger_destroyEggCast
 
-	self:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE", "Event") --trigger_conflagHitYou
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_warStomp
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_warStomp
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_volleyCast, trigger_warStomp
 
 
 	self:ThrottleSync(3, syncName.polymorph)
@@ -289,7 +275,6 @@ end
 function module:OnSetup()
 	self.started = nil
 	
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -315,19 +300,10 @@ function module:OnDisengage()
 	self:CancelScheduledEvent("Razorgore_OrbControlCheck")
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Grethok the Controller")) then
+-- UNIT_DIED: the add counter (Razorgore's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == controller or ev.destName == "Grethok the Controller" or ev.destName == "Blackwing Guardsman" then
 		addDead = addDead + 1
-		if addDead == 3 then
-			--self:Sync(syncName.phase2)
-		end
-	elseif (msg == string.format(UNITDIESOTHER, "Blackwing Guardsman")) then
-		addDead = addDead + 1
-		if addDead == 3 then
-			--self:Sync(syncName.phase2)
-		end
 	end
 end
 
@@ -343,89 +319,95 @@ function module:CHAT_MSG_MONSTER_EMOTE(msg)
 	end
 end
 
-function module:Event(msg)
---phase 1
-	if msg == L["trigger_polyYou"] then
-		self:Sync(syncName.polymorph .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_polyOther"]) then
-		local _,_,polyPlayer,_ = string.find(msg, L["trigger_polyOther"])
-		self:Sync(syncName.polymorph .. " " .. polyPlayer)
-		
-	elseif string.find(msg, L["trigger_polyFade"]) then
-		local _,_,polyFadePlayer,_ = string.find(msg, L["trigger_polyFade"])
-		if polyFadePlayer == "you" then polyFadePlayer = UnitName("Player") end
-		self:Sync(syncName.polymorphFade .. " " .. polyFadePlayer)
-		
-		
-	elseif msg == L["trigger_mcYou"] then
-		self:Sync(syncName.mc .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _,_,mcPlayer,_ = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local function Named(ev)
+	return ev.destName and BigWigs:IsGroupMember(ev.destFlags)
+end
 
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _,_,mcPlayer,_ = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPlayer)
-		
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _,_,mcFadePlayer,_ = string.find(msg, L["trigger_mcFade"])
-		if mcFadePlayer == "you" then mcFadePlayer = UnitName("Player") end
-		self:Sync(syncName.mcFade .. " " .. mcFadePlayer)
-		
-	
-	elseif string.find(msg, L["trigger_slow"]) then
+--phase 1
+function module:PolyEvent(ev)
+	if Named(ev) then
+		self:Sync(syncName.polymorph .. " " .. ev.destName)
+	end
+end
+
+function module:PolyFadeEvent(ev)
+	if Named(ev) then
+		self:Sync(syncName.polymorphFade .. " " .. ev.destName)
+	end
+end
+
+-- a mind-controlled player turns hostile, so only the name is checked
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
+	end
+end
+
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
+	end
+end
+
+function module:SlowEvent(ev)
+	if Named(ev) then
 		self:Sync(syncName.slow)
-		
-		
+	end
+end
+
 --phase 2
-	elseif msg == L["trigger_destroyEggCast"] then
+function module:DestroyEggEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.destroyEggCast)
-		
+
 		self:CancelScheduledEvent("Razorgore_DestroyEgg")
 		self:ScheduleEvent("Razorgore_DestroyEgg", self.Razorgore_DestroyEgg, 3, self)
-		
-	
-	
-	elseif msg == L["trigger_mindExhaustionYou"] then
-		self:Sync(syncName.mindExhaustion .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_mindExhaustionOther"]) then
-		local _,_,mindExhaustionPlayer,_ = string.find(msg, L["trigger_mindExhaustionOther"])
-		self:Sync(syncName.mindExhaustion .. " " .. mindExhaustionPlayer)
-		
-	elseif string.find(msg, L["trigger_mindExhaustionFade"]) then
-		
+	end
+end
+
+function module:MindExhaustionEvent(ev)
+	if Named(ev) then
+		self:Sync(syncName.mindExhaustion .. " " .. ev.destName)
+	end
+end
+
+function module:MindExhaustionFadeEvent(ev)
+	if Named(ev) then
 		self:CancelScheduledEvent("Razorgore_DestroyEgg")
-		
-		local _,_,mindExhaustionFadePlayer,_ = string.find(msg, L["trigger_mindExhaustionFade"])
-		if mindExhaustionFadePlayer == "you" then mindExhaustionFadePlayer = UnitName("Player") end
-		self:Sync(syncName.mindExhaustionFade .. " " .. mindExhaustionFadePlayer)
-
-
+		self:Sync(syncName.mindExhaustionFade .. " " .. ev.destName)
+	end
+end
 
 --phase 3
-	elseif msg == L["trigger_volleyCast"] then
+function module:VolleyEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.volley)
-		
-		
-	elseif msg == L["trigger_conflagrationYou"] then
-		self:Sync(syncName.conflagration .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_conflagrationOther"]) then
-		local _,_,conflagPlayer,_ = string.find(msg, L["trigger_conflagrationOther"])
-		self:Sync(syncName.conflagration .. " " .. conflagPlayer)
-		
-	elseif string.find(msg, L["trigger_conflagrationFade"]) then
-		local _,_,conflagFadePlayer,_ = string.find(msg, L["trigger_conflagrationFade"])
-		if conflagFadePlayer == "you" then conflagFadePlayer = UnitName("Player") end
-		self:Sync(syncName.conflagrationFade .. " " .. conflagFadePlayer)
-	
-	elseif string.find(msg, L["trigger_conflagHitYou"]) and self.db.profile.conflagration and not string.find(msg, "Your Conflagration hits you for") then
+	end
+end
+
+function module:ConflagrationEvent(ev)
+	if Named(ev) then
+		self:Sync(syncName.conflagration .. " " .. ev.destName)
+	end
+end
+
+function module:ConflagrationFadeEvent(ev)
+	if Named(ev) then
+		self:Sync(syncName.conflagrationFade .. " " .. ev.destName)
+	end
+end
+
+-- Conflagration damage on you from anyone but yourself
+function module:ConflagrationHitEvent(ev)
+	local me = UnitGUID("player")
+	if self.db.profile.conflagration and ev.destGUID == me and ev.sourceGUID ~= me then
 		self:ConflagHitYou()
-	
-	elseif string.find(msg, L["trigger_warStomp"]) then
+	end
+end
+
+function module:WarStompEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.warStomp)
 	end
 end

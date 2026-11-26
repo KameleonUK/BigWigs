@@ -1,6 +1,7 @@
 
 local module, L = BigWigs:ModuleDeclaration("Moam", "Ruins of Ahn'Qiraj")
 module.revision = 30076
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"adds", "paralyze", "bosskill"}
 
@@ -23,7 +24,6 @@ L:RegisterTranslations("enUS", function() return {
 	msg_incoming = "Mana Fiends incoming in %s seconds!",
 	msg_adds = "Mana Fiends spawned! Moam Paralyzed for 90 seconds!",
 	
-	trigger_energyzeFade = "Energize fades from Moam.",
 	trigger_energyzeFade2 = "bristles with energy",
 	bar_paralyse = "Paralyze",
 	msg_energizeFadeSoon = "Moam unparalyzed in %s seconds!",
@@ -52,7 +52,6 @@ L:RegisterTranslations("zhCN", function() return {
     msg_incoming = "法力恶魔即将在 %s 秒内到来！",
     msg_adds = "法力恶魔已出现！莫阿姆麻痹 90 秒！",
 	
-	trigger_energyzeFade = "充能效果从莫阿姆身上消失",
 	trigger_energyzeFade2 = "充满了能量！",
     bar_paralyse = "麻痹",
     msg_energizeFadeSoon = "莫阿姆在 %s 秒后解除麻痹！",
@@ -77,9 +76,9 @@ local syncName = {
 local firstunparalyze = nil
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_MONSTER_EMOTE", "Event")
-	self:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")
+	self:RegisterEvent("CHAT_MSG_MONSTER_EMOTE", "EmoteEvent")
+	self:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE", "EmoteEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Energize", "EnergizeFadeEvent")
 
 	self:ThrottleSync(10, syncName.paralyze)
 	self:ThrottleSync(10, syncName.unparalyze)
@@ -96,11 +95,15 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
+function module:EmoteEvent(msg)
 	if string.find(msg, L["trigger_adds"]) then
 		self:Sync(syncName.paralyze)
-	
-	elseif string.find( msg, L["trigger_energyzeFade"]) then
+	end
+end
+
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:EnergizeFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.unparalyze)
 	end
 end

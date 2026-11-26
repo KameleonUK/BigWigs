@@ -3,6 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("High Priestess Mar'li", "Zul'Gurub"
 local watchForSpawn = nil
 
 module.revision = 30078
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"webs", "charge", "drain", "phase", "spider", "volley", "bosskill"}
 
@@ -35,20 +36,13 @@ L:RegisterTranslations("enUS", function() return {
 	
 	
 	trigger_engage = "Draw me to your web mistress Shadra. Unleash your venom!",--CHAT_MSG_MONSTER_YELL
-	trigger_bossDead = "High Priestess Mar'li dies.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	--trigger_addDead = "Spawn of Mar'li dies.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	
-	trigger_websOther = "(.+) is afflicted by Enveloping Webs.", --CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_websYou = "You are afflicted by Enveloping Webs.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	bar_websCd = "Enveloping Webs CD",
 	
-	trigger_charge = "High Priestess Mar'li's Charge",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_chargeCd = "Charge CD",
 	
 	--if registering CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE then will Warlock's...
-	trigger_drainLifeOther = "(.+) is afflicted by Drain Life.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_drainLifeYou = "You are afflicted by Drain Life.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_drainLifeFade = "Drain Life fades from (.+)",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_drainLife = "Drain Life",
 	msg_drainLife = "Drain Life - Interrupt/Dispel!",
 	
@@ -63,7 +57,6 @@ L:RegisterTranslations("enUS", function() return {
 	msg_addsDead = "/4 Spiders Dead",
 	msg_spidersSpawn = "Kill the Spider add!",
 	
-	trigger_poisonVolley = "afflicted by Poison Bolt Volley.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_poisonVolleyCd = "Poison Volley CD",
 } end )
 
@@ -99,20 +92,13 @@ L:RegisterTranslations("zhCN", function() return {
 	
 	
 	trigger_engage = "Draw me to your web mistress Shadra. Unleash your venom!",--CHAT_MSG_MONSTER_YELL
-	trigger_bossDead = "High Priestess Mar'li dies.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	--trigger_addDead = "Spawn of Mar'li dies.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	
-	trigger_websOther = "(.+) is afflicted by Enveloping Webs.", --CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_websYou = "You are afflicted by Enveloping Webs.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     bar_websCd = "包围之网冷却",
 	
-	trigger_charge = "High Priestess Mar'li's Charge",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_chargeCd = "冲锋冷却",
 	
 	--if registering CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE then will Warlock's...
-	trigger_drainLifeOther = "(.+) is afflicted by Drain Life.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_drainLifeYou = "You are afflicted by Drain Life.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_drainLifeFade = "Drain Life fades from (.+)",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_drainLife = "吸取生命",
     msg_drainLife = "吸取生命 - 打断/驱散！",
 	
@@ -127,7 +113,6 @@ L:RegisterTranslations("zhCN", function() return {
     msg_addsDead = "/4 蜘蛛已死",
     msg_spidersSpawn = "杀死蜘蛛增援！",
 	
-	trigger_poisonVolley = "afflicted by Poison Bolt Volley.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     bar_poisonVolleyCd = "毒箭之雨冷却",
 } end )
 local timer = {
@@ -183,17 +168,14 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_engage, trigger_spiderSpawn
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_websYou, trigger_poisonVolley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_websOther, trigger_poisonVolley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_websOther, trigger_poisonVolley
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enveloping Webs", "WebsEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Charge", "ChargeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Drain Life", "DrainLifeEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Drain Life", "DrainLifeFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Poison Bolt Volley", "VolleyEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--trigger_charge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_charge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_charge
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_drainLifeFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_drainLifeFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_drainLifeFade
 	
 	
 	self:ThrottleSync(3, syncName.webs)
@@ -207,7 +189,6 @@ function module:OnEnable()
 end
 
 function module:OnSetup()
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -241,11 +222,9 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	if msg == L["trigger_bossDead"] then
-		self:SendBossDeathSync()
-	
-	elseif msg == string.format(UNITDIESOTHER, "Spawn of Mar'li") then
+-- UNIT_DIED: the spider adds (Mar'li's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Spawn of Mar'li" then
 		if addsDead < 4 then
 			addsDead = addsDead + 1
 			self:Message(addsDead..L["msg_addsDead"], "Positive", false, nil, false)
@@ -276,23 +255,34 @@ function module:SpiderAddCheck()
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_websYou"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WebsEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.webs)
-	elseif string.find(msg, L["trigger_websOther"]) then
-		self:Sync(syncName.webs)
-	
-	elseif string.find(msg, L["trigger_charge"]) then
+	end
+end
+
+function module:ChargeEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.charge)
-	
-	elseif msg == L["trigger_drainLifeYou"] then
+	end
+end
+
+-- her Drain Life on a raid member (a warlock's Drain Life is on a mob, so it is skipped)
+function module:DrainLifeEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.drainStart)
-	elseif string.find(msg, L["trigger_drainLifeOther"]) then
-		self:Sync(syncName.drainStart)
-	elseif string.find(msg, L["trigger_drainLifeFade"]) then
+	end
+end
+
+function module:DrainLifeFadeEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.drainOver)
-	
-	elseif string.find(msg, L["trigger_poisonVolley"]) then
+	end
+end
+
+function module:VolleyEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.poisonVolley)
 	end
 end

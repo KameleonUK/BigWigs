@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Garr", "Molten Core")
 
 module.revision = 30078
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"pulse", "remove", "adds", "immolate", "bosskill"}
 module.wipemobs = {"Firesworn"}
@@ -26,17 +27,14 @@ L:RegisterTranslations("enUS", function() return {
 	immolate_desc = "Warn for Immolate",
 	
 	
-	trigger_antimagicPulse = "Garr performs Antimagic Pulse", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_antimagicPulse = "Antimagic Pulse",
 	
-	trigger_remove = "Your (.+) is removed.", --CHAT_MSG_SPELL_BREAK_AURA
 	msg_remove = "Antimagic Pulse Removed your ",
 	
 	msg_addDead = "/8 Firesworn Dead",
 	
 	--not tracking the afflicted since many mobs do immolate, may cause conflict
 		--instead only showing the message once to remind dispels on Garr
-	trigger_immolate = "Fire damage from Firesworn's Immolate.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	msg_immolate = "Immolate - Dispel!",
 } end)
 
@@ -64,15 +62,12 @@ local fightningGarr = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_antimagicPulse
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_antimagicPulse
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_antimagicPulse
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", {19492, "Antimagic Pulse"}, "PulseEvent")
+	self:RegisterCombatLog("SPELL_DISPEL", {19492, "Antimagic Pulse"}, "RemoveEvent")
+	self:RegisterCombatLog({"SPELL_PERIODIC_DAMAGE", "SPELL_AURA_APPLIED"}, {15733, "Immolate"}, "ImmolateEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_immolate
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_immolate
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_immolate
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_BREAK_AURA", "Event") --trigger_remove
 	
 	
 	self:ThrottleSync(5, syncName.antimagicPulse)
@@ -83,7 +78,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --addDead
 end
 
 function module:OnEngage()
@@ -99,30 +93,36 @@ function module:OnDisengage()
 	fightningGarr = false
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Firesworn")) then
+-- UNIT_DIED: the Firesworn counter (Garr's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Firesworn" then
 		addDead = addDead + 1
 		if addDead <= 8 then
 			self:Sync(syncName.addDead .. " " .. addDead)
 		end
-	elseif (msg == string.format(UNITDIESOTHER, "Garr")) then
+	elseif ev.destName == self.translatedName then
 		fightningGarr = false
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_antimagicPulse"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:PulseEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.antimagicPulse)
-	
-	elseif string.find(msg, L["trigger_remove"]) and fightningGarr == true and self.db.profile.remove then
-		local _,_, removedBuff, _ = string.find(msg, L["trigger_remove"])
-		if removedBuff ~= "Immolate" then
-			self:Remove(removedBuff)
+	end
+end
+
+-- a buff of yours removed by the pulse
+function module:RemoveEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and fightningGarr == true and self.db.profile.remove then
+		if ev.extraSpellName and ev.extraSpellName ~= "Immolate" then
+			self:Remove(ev.extraSpellName)
 		end
-		
-	elseif string.find(msg, L["trigger_immolate"]) then
+	end
+end
+
+function module:ImmolateEvent(ev)
+	if ev.sourceName == "Firesworn" then
 		self:Sync(syncName.immolate)
 	end
 end

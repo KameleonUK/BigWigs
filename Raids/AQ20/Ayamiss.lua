@@ -3,6 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("Ayamiss the Hunter", "Ruins of Ahn'
 local p2 = nil -- true once phase 2 has started
 
 module.revision = 30069
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"bigicon", "sacrifice", "bosskill"}
 
@@ -18,9 +19,6 @@ L:RegisterTranslations("enUS", function() return {
 	bigicon_desc = "Shows a big icon when a larva spawns",
 	
 	
-	sacrificeother_trigger = "(.*) is afflicted by Paralyze.",
-	sacrificeyou_trigger = "(.*) are afflicted by Paralyze.",
-	sacrificeend_trigger = "Paralyze fades from",
 	
 	larva_bar = "Larva >Click Me!<",
 	nextlarva_bar = "Larva/Sacrifice CD",
@@ -47,9 +45,6 @@ L:RegisterTranslations("zhCN", function() return {
 	bigicon_desc = "当幼虫产生时显示大图标警告",
 	
 	
-	sacrificeother_trigger = "(.*) is afflicted by Paralyze.",
-	sacrificeyou_trigger = "(.*) are afflicted by Paralyze.",
-	sacrificeend_trigger = "Paralyze fades from",
 	
 	larva_bar = "幼虫 >点我!<",
 	nextlarva_bar = "幼虫/牺牲冷却",
@@ -76,10 +71,9 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE", "Event")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Paralyze", "ParalyzeEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Paralyze", "ParalyzeFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	self:RegisterEvent("UNIT_HEALTH")
 	
 	self:ThrottleSync(5, syncName.sacrifice)
@@ -88,7 +82,6 @@ function module:OnEnable()
 end
 
 function module:OnSetup()
-self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -99,9 +92,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-	if msg == string.format(UNITDIESOTHER, L["larvaname"]) then
+-- UNIT_DIED: the larva reaching nobody (Ayamiss's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == L["larvaname"] then
 		self:Sync(syncName.larvaend)
 	end
 end
@@ -119,14 +112,15 @@ function module:UNIT_HEALTH(arg1)
 	end
 end
 
-function module:Event(msg)
-	local _,_,sacrificeother = string.find(msg, L["sacrificeother_trigger"])
-	if string.find(msg, L["sacrificeyou_trigger"]) then
-		self:Sync(syncName.sacrifice.." "..UnitName("player"))
-	elseif sacrificeother then
-		self:Sync(syncName.sacrifice.." "..sacrificeother)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ParalyzeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.sacrifice .. " " .. ev.destName)
 	end
-	if string.find(msg, L["sacrificeend_trigger"]) then
+end
+
+function module:ParalyzeFadeEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.larvaend)
 	end
 end
@@ -150,7 +144,7 @@ function module:Sacrifice(rest)
 		self:WarningSign(icon.sacrifice, 0.7)
 	end
 	
-	bwPlayerIsAttacking = nil
+	local bwPlayerIsAttacking = nil
 	if IsRaidLeader() or IsRaidOfficer() then
 		if BigWigs:PlayerClass() ~= "ROGUE" and BigWigs:PlayerClass() ~= "DRUID" then
 			if PlayerFrame.inCombat then

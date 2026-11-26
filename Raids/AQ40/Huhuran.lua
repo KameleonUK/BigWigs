@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Princess Huhuran", "Ahn'Qiraj")
 
 module.revision = 30033
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wyvernsting", "frenzy", "noxiouspoison", "berserk", "enrage", "bosskill"}
 
@@ -33,28 +34,18 @@ L:RegisterTranslations("enUS", function() return {
 	enrage_desc = "Warn for Timed Enrage",
 	
 	
-	trigger_wyvernSting = "afflicted by Wyvern Sting",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_wyvernStingYou = "You are afflicted by Wyvern Sting.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_wyvernStingYouFade = "Wyvern Sting fades from you.",--CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_wyvernStingDuration = "Wyvern Stung",
 	bar_wyvernStingCd = "Wyvern Sting CD",
 	
-	trigger_frenzyGain = "Princess Huhuran gains Frenzy.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_frenzyFade = "Frenzy fades from Princess Huhuran.",--CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_frenzyDuration = "Frenzy!",
 	bar_frenzyCd = "Frenzy CD",
 	msg_frenzy = "Frenzy - Tranq Shot!",
 
-	trigger_noxiousPoison = "afflicted by Noxious Poison",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_noxiousPoisonYou = "You are afflicted by Noxious Poison.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_noxiousPoisonYouFade = "Noxious Poison fades from you.",--CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_noxiousPoisonDuration = "People Silenced",
 	bar_noxiousPoisonCd = "Noxious Poison CD",
 	
-	trigger_berserk = "Princess Huhuran gains Berserk.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_berserk = "Berserk! Soak poison!",
 	
-	trigger_enrage = "Princess Huhuran gains Enrage.",--5min timer, string to be confirmed
 	bar_enrage = "Enrage",
 	msg_enrage1min = "Enrage in 60 seconds",
 	msg_enrage5sec = "Enrage in 5 seconds",
@@ -87,28 +78,18 @@ L:RegisterTranslations("zhCN", function() return {
     enrage_desc = "定时狂怒出现时进行警告",
     
     
-    trigger_wyvernSting = "受到了翼龙钉刺效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-    trigger_wyvernStingYou = "受到了翼龙钉刺效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_wyvernStingYouFade = "翼龙钉刺效果从你身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_wyvernStingDuration = "翼龙钉刺效果",
     bar_wyvernStingCd = "翼龙钉刺冷却",
     
-    trigger_frenzyGain = "哈霍兰公主获得了疯狂的效果。",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_frenzyFade = "疯狂效果从哈霍兰公主身上消失。",--CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_frenzyDuration = "狂乱！",
     bar_frenzyCd = "狂乱冷却",
     msg_frenzy = "狂乱 - 宁神射击！",
 
-    trigger_noxiousPoison = "受到了致命剧毒效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-    trigger_noxiousPoisonYou = "你受到了致命剧毒效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_noxiousPoisonYouFade = "致命剧毒效果从你身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_noxiousPoisonDuration = "沉默效果",
     bar_noxiousPoisonCd = "剧毒冷却",
     
-    trigger_berserk = "哈霍兰公主获得了狂暴的效果。",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_berserk = "狂暴！开管家铃！召唤各种小弟！",
     
-    trigger_enrage = "哈霍兰公主获得了狂怒的效果。",--5min timer, string to be confirmed
     bar_enrage = "狂怒",
     msg_enrage1min = "60秒内狂怒",
     msg_enrage5sec = "5秒内狂怒",
@@ -158,13 +139,15 @@ local lastFrenzy = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_wyvernSting, trigger_noxiousPoison,trigger_noxiousPoisonYou , trigger_wyvernStingYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_wyvernSting, trigger_noxiousPoison
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_wyvernSting, trigger_noxiousPoison
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Wyvern Sting", "WyvernStingEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Wyvern Sting", "WyvernStingFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Noxious Poison", "NoxiousPoisonEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Noxious Poison", "NoxiousPoisonFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Frenzy", "FrenzyEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Frenzy", "FrenzyFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Berserk", "BerserkEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_frenzyGain, trigger_berserk
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_frenzyFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_noxiousPoisonYouFade, trigger_wyvernStingYouFade
 
 	self:ThrottleSync(5, syncName.wyvernSting)
 	self:ThrottleSync(5, syncName.frenzyGain)
@@ -196,35 +179,57 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_noxiousPoisonYou"] then
-		self:WarningSign(icon.noxiousPoison, timer.noxiousPoisonDuration)
-	elseif msg == L["trigger_noxiousPoisonYouFade"] then
-		self:RemoveWarningSign(icon.noxiousPoison)
-	end
-	
-	if msg == L["trigger_wyvernStingYou"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WyvernStingEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
 		self:WarningSign(icon.wyvernSting, timer.wyvernStingDuration)
-	elseif msg == L["trigger_wyvernStingYouFade"] then
+	end
+	if BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.wyvernSting)
+	end
+end
+
+function module:WyvernStingFadeEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
 		self:RemoveWarningSign(icon.wyvernSting)
 	end
-	
-	
-	if string.find(msg, L["trigger_wyvernSting"]) then
-		self:Sync(syncName.wyvernSting)
-	
-	elseif msg == L["trigger_frenzyGain"] then
-		self:Sync(syncName.frenzyGain)
-	elseif msg == L["trigger_frenzyFade"] then
-		self:Sync(syncName.frenzyFade)
-		
-	elseif string.find(msg, L["trigger_noxiousPoison"]) then
-		self:Sync(syncName.noxiousPoison)
+end
 
-	elseif msg == L["trigger_berserk"] then
+function module:NoxiousPoisonEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
+		self:WarningSign(icon.noxiousPoison, timer.noxiousPoisonDuration)
+	end
+	if BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.noxiousPoison)
+	end
+end
+
+function module:NoxiousPoisonFadeEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
+		self:RemoveWarningSign(icon.noxiousPoison)
+	end
+end
+
+function module:FrenzyEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.frenzyGain)
+	end
+end
+
+function module:FrenzyFadeEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.frenzyFade)
+	end
+end
+
+function module:BerserkEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.berserk)
-		
-	elseif msg == L["trigger_enrage"] then
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
 	end
 end

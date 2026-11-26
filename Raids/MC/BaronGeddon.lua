@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Baron Geddon", "Molten Core")
 
 module.revision = 30075
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"bomb", "inferno", "armageddon", "ignite", "icon", "bosskill"}
 module.zonename = {
@@ -33,27 +34,18 @@ L:RegisterTranslations("enUS", function() return {
 	icon_desc = "Put a Raid Icon on the person who's the bomb. (Requires assistant or higher)",
 	
 	
-	trigger_bombYou = "You are afflicted by Living Bomb.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_bombOther = "(.+) is afflicted by Living Bomb.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_bombFade = "Living Bomb fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_bomb = " Bomb!",
 	msg_bomb = " is the Bomb!",
 	
-	trigger_inferno = "Baron Geddon gains Inferno.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_infernoFade = "Inferno fades from Baron Geddon.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_infernoCd = "Inferno CD",
 	bar_infernoSoon = "Inferno Soon...",
 	bar_infernoChannel = "Inferno!",
 	
-	trigger_infernoYou = "Baron Geddon's Inferno hits you for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	msg_infernoYou = "Get out of Inferno!",
 	
-	trigger_armageddon = "Baron Geddon is afflicted by Armageddon.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
 	bar_armageddon = "Armageddon!",
 	msg_armageddon = "Armageddon - Kill Baron Geddon!",
 	
-	trigger_ignite = "afflicted by Ignite Mana", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_ignite2 = "Ignite Mana was resisted", --CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_igniteCd = "Ignite Mana CD",
 	msg_ignite = "Ignite Mana - Dispel! (Classes with Mana only)",
 } end)
@@ -103,22 +95,18 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 		
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_bombYou, trigger_ignite
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_bombOther, trigger_ignite
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_bombOther, trigger_ignite
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {20475, "Living Bomb"}, "BombEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {20475, "Living Bomb"}, "BombFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19695, "Inferno"}, "InfernoEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {19695, "Inferno"}, "InfernoFadeEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", {19698, "Inferno"}, "InfernoHitEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {20478, "Armageddon"}, "ArmageddonEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, {19659, "Ignite Mana"}, "IgniteEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_inferno
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_bombFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_bombFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_bombFade, trigger_infernoFade
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_infernoYou
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "Event") --trigger_armageddon
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_ignite2
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_ignite2
 
 
 	self:ThrottleSync(5, syncName.bomb)
@@ -149,33 +137,45 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_bombYou"] then
-		self:Sync(syncName.bomb .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_bombOther"]) then
-		local _,_, bombPlayer,_ = string.find(msg, L["trigger_bombOther"])
-		self:Sync(syncName.bomb .. " " .. bombPlayer)
-		
-	elseif string.find(msg, L["trigger_bombFade"]) then
-		local _,_, bombFadePlayer,_ = string.find(msg, L["trigger_bombFade"])
-		if bombFadePlayer == "you" then bombFadePlayer = UnitName("Player") end
-		self:Sync(syncName.bombFade .. " " .. bombFadePlayer)
-		
-		
-	elseif msg == L["trigger_inferno"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:BombEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.bomb .. " " .. ev.destName)
+	end
+end
+
+function module:BombFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.bombFade .. " " .. ev.destName)
+	end
+end
+
+function module:InfernoEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.inferno)
-	
-	elseif msg == L["trigger_infernoFade"] then
+	end
+end
+
+function module:InfernoFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.infernoFade)
-	
-	elseif string.find(msg, L["trigger_infernoYou"]) and self.db.profile.inferno then
+	end
+end
+
+function module:InfernoHitEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.inferno then
 		self:InfernoYou()
-		
-	elseif msg == L["trigger_armageddon"] then
+	end
+end
+
+function module:ArmageddonEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.armageddon)
-		
-	elseif string.find(msg, L["trigger_ignite"]) or string.find(msg, L["trigger_ignite2"]) then
+	end
+end
+
+function module:IgniteEvent(ev)
+	if ev.sourceName == self.translatedName or ev.subevent == "SPELL_AURA_APPLIED" then
 		self:Sync(syncName.ignite)
 	end
 end

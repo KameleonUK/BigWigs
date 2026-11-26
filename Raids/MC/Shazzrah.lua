@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Shazzrah", "Molten Core")
 
 module.revision = 30075
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"counterspell", "curse", "deaden", "blink", "bosskill"}
 
@@ -25,20 +26,14 @@ L:RegisterTranslations("enUS", function() return {
 	blink_desc = "Warn for Blink",
 	
 	
-	trigger_counterspell = "Shazzrah's Counterspell", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_counterspell2 = "Shazzrah interrupt", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_counterspellCd = "Counterspell CD",
 	bar_counterspellSoon = "Counterspell Soon...",
 	msg_counterspellSoon = "Counterspell Soon - Stop Casting!",
 	msg_counterspell = "Counterspell Done - Start Casting!",	
 	
-	trigger_curse = "afflicted by Shazzrah's Curse.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_curse2 = "Shazzrah's Curse was resisted", --CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_curseCd = "Shazzrah's Curse CD",
 	msg_curse = "Shazzrah's Curse - Decurse!",
 	
-	trigger_deaden = "Shazzrah gains Deaden Magic.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_deadenFade = "Deaden Magic fades from Shazzrah.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_deadenCd = "Deaden Magic CD",
 	bar_deadenDur = "Deaden Magic is UP!",
 	msg_deaden = "Deaden Magic - Dispel it!",
@@ -102,17 +97,13 @@ local shazzTarget = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_curse
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_INTERRUPT", "SPELL_MISSED"}, {19715, "Counterspell"}, "CounterspellEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, {19713, "Shazzrah's Curse"}, "CurseEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19714, "Deaden Magic"}, "DeadenEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {19714, "Deaden Magic"}, "DeadenFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_deaden
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_deadenFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_counterspell, trigger_counterspell2
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_counterspell, trigger_counterspell2, trigger_curse2
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_counterspell, trigger_counterspell2, trigger_curse2
 	
 	
 	self:ThrottleSync(5, syncName.counterspell)
@@ -165,17 +156,27 @@ function module:OnDisengage()
 	self:CancelDelayedSync(syncName.enableCheckBlink)
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_counterspell"]) or string.find(msg, L["trigger_counterspell2"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:CounterspellEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.counterspell)
-	
-	elseif string.find(msg, L["trigger_curse"]) or string.find(msg, L["trigger_curse2"]) then
+	end
+end
+
+function module:CurseEvent(ev)
+	if ev.sourceName == self.translatedName or ev.subevent == "SPELL_AURA_APPLIED" then
 		self:Sync(syncName.curse)
-		
-	elseif msg == L["trigger_deaden"] then
+	end
+end
+
+function module:DeadenEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.deaden)
-	
-	elseif msg == L["trigger_deadenFade"] then
+	end
+end
+
+function module:DeadenFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.deadenFade)
 	end
 end

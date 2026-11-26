@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Sanctum Wyrm", "Emerald Sanctum")
 
 module.revision = 30020
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"volley"}
 module.trashMod = true
@@ -17,10 +18,8 @@ L:RegisterTranslations("enUS", function() return {
 	volley_name = "Poison Volley Alert",
 	volley_desc = "Warn for Poison Volley",
 
-	trigger_volley = "Sanctum Wyrm's Poison Bolt Volley",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	bar_volley = "Poison Bolt Volley",
 	
-	trigger_volleyYou = "Sanctum Wyrm's Poison Bolt Volley hits you",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	msg_volley = "Get max range to avoid Poison Volley!",
 	
 	["You have slain %s!"] = true,
@@ -41,10 +40,8 @@ L:RegisterTranslations("zhCN", function() return {
     volley_name = "毒箭齐射警报",
     volley_desc = "毒箭齐射出现时进行警告",
 
-    trigger_volley = "圣所巨龙的毒箭之雨",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
     bar_volley = "毒箭齐射（清毒）",
     
-    trigger_volleyYou = "圣所巨龙的毒箭之雨击中你造成",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
     msg_volley = "保持最远距离以躲避毒箭齐射！",
     
     ["You have slain %s!"] = "你已击败了%s！",
@@ -64,9 +61,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--trigger_volley, trigger_volleyYou
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED", "SPELL_AURA_APPLIED"}, {24099, "Poison Bolt Volley"}, "VolleyEvent")
 	
 	self:ThrottleSync(1, syncName.volley)
 end
@@ -81,60 +76,17 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local volleyClasses = { MAGE = true, WARLOCK = true, PRIEST = true }
 
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
+function module:VolleyEvent(ev)
+	if ev.sourceName ~= self.translatedName then
+		return
 	end
-end
-
-function module:Event(msg)
-	if string.find(msg, L["trigger_volley"]) then
-		self:Sync(syncName.volley)
-	end
-	
-	if string.find(msg, L["trigger_volleyYou"]) then
-		if BigWigs:PlayerClass() == "MAGE" then
-			self:Message(L["msg_volley"], "Urgent", false, nil, false)
-			self:Sound("Info")
-		elseif BigWigs:PlayerClass() == "WARLOCK" then
-			self:Message(L["msg_volley"], "Urgent", false, nil, false)
-			self:Sound("Info")
-		elseif BigWigs:PlayerClass() == "PRIEST" then
-			self:Message(L["msg_volley"], "Urgent", false, nil, false)
-			self:Sound("Info")
-		end
+	self:Sync(syncName.volley)
+	if ev.subevent == "SPELL_DAMAGE" and ev.destGUID and ev.destGUID == UnitGUID("player") and volleyClasses[BigWigs:PlayerClass()] then
+		self:Message(L["msg_volley"], "Urgent", false, nil, false)
+		self:Sound("Info")
 	end
 end
 

@@ -3,6 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("High Priestess Arlokk", "Zul'Gurub"
 local vanished = nil
 
 module.revision = 30078
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"phase", "mark", "whirlwind", "ravage", "gouge", "swp", "bosskill"}
 
@@ -44,28 +45,15 @@ L:RegisterTranslations("enUS", function() return {
 	bar_nextVanish = "Next Vanish",
 	bar_nestTroll = "Next Troll Phase", --need data on timer
 	
-	trigger_markYou = "You are afflicted by Mark of Arlokk.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_markOther = "(.+) is afflicted by Mark of Arlokk.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_markFade = "Mark of Arlokk fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	msg_mark = " is Marked!",
 	bar_mark = " Marked",
 	
-	trigger_ww = "High Priestess Arlokk's Whirlwind",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	bar_ww = "Whirlwind CD",
 	
-	trigger_ravageYou = "You are afflicted by Ravage.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_ravageOther = "(.+) is afflicted by Ravage.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_ravageFade = "Ravage fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_ravage = " Ravage Stun",
 	
-	trigger_gougeYou = "You are afflicted by Gouge.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_gougeOther = "(.+) is afflicted by Gouge.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_gougeFade = "Gouge fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_gouge = " Gouged",
 	
-	trigger_swpYou = "You are afflicted by Shadow Word: Pain.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_swpOther = "(.+) is afflicted by Shadow Word: Pain.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_swpFade = "Shadow Word: Pain fades from (.+).",	--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_swp = " Shadow Word: Pain",
 	msg_swp = " Shadow Word: Pain - Dispel!",
 } end )
@@ -111,28 +99,15 @@ L:RegisterTranslations("zhCN", function() return {
     bar_nextVanish = "下一次消失",
     bar_nestTroll = "下一次巨魔阶段", --need data on timer
 	
-	trigger_markYou = "你受到了娅尔罗的印记效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_markOther = "(.+)受到了娅尔罗的印记效果的影响。", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_markFade = "娅尔罗的印记效果从(.+)身上消失了。", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     msg_mark = " 被标记！",
     bar_mark = " 标记",
 	
-	trigger_ww = "高阶女祭司娅尔罗的旋风斩",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
     bar_ww = "旋风斩冷却",
 	
-	trigger_ravageYou = "你受到了毁灭效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_ravageOther = "(.+)受到了毁灭效果的影响。", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_ravageFade = "毁灭效果从(.+)身上消失了。", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_ravage = " 毁灭昏迷",
 	
-	trigger_gougeYou = "You are afflicted by Gouge.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_gougeOther = "(.+) is afflicted by Gouge.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_gougeFade = "Gouge fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_gouge = " 被凿击",
 	
-	trigger_swpYou = "你受到了暗言术：痛效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_swpOther = "(.+)受到了暗言术：痛效果的影响。", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_swpFade = "暗言术：痛效果从(.+)身上消失了。",	--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_swp = " 暗言术：痛",
     msg_swp = " 暗言术：痛 - 驱散！",
     you = "你",
@@ -195,17 +170,17 @@ module:RegisterYellEngage(L["trigger_engage"])
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_ww
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_ww
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_ww
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {24210, "Mark of Arlokk"}, "MarkEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {24210, "Mark of Arlokk"}, "MarkFadeEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Whirlwind", "WhirlwindEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Ravage", "RavageEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Ravage", "RavageFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Gouge", "GougeEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Gouge", "GougeFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Shadow Word: Pain", "ShadowWordPainEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Shadow Word: Pain", "ShadowWordPainFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_markFade, trigger_ravageFade, trigger_gougeFade, trigger_swpFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_markFade, trigger_ravageFade, trigger_gougeFade, trigger_swpFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_markFade, trigger_ravageFade, trigger_gougeFade, trigger_swpFade
 		
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_markYou, trigger_ravageYou, trigger_gougeYou, trigger_swpYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_markOther, trigger_ravageOther, trigger_gougeOther, trigger_swpOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_markOther,trigger_ravageOther, trigger_gougeOther, trigger_swpOther
 	
 	
 	self:ThrottleSync(3, syncName.vanishPhase)
@@ -244,61 +219,58 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_markYou"] then
-		self:Sync(syncName.mark.." "..UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_markOther"]) then
-		local _,_, markedPlayer = string.find(msg, L["trigger_markOther"])
-		self:Sync(syncName.mark.." "..markedPlayer)
-	
-	elseif string.find(msg, L["trigger_markFade"]) then
-		local _,_, markFadePlayer = string.find(msg, L["trigger_markFade"])
-		if markFadePlayer == "you" then markFadePlayer = UnitName("Player") end
-		self:Sync(syncName.markFade.." "..markFadePlayer)
-	
-	
-	elseif string.find(msg, L["trigger_ww"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:MarkEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.mark .. " " .. ev.destName)
+	end
+end
+
+function module:MarkFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.markFade .. " " .. ev.destName)
+	end
+end
+
+function module:WhirlwindEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.ww)
-		
-	
-	elseif msg == L["trigger_ravageYou"] then
-		self:Sync(syncName.ravage.." "..UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_ravageOther"]) then
-		local _,_, ravagedPlayer = string.find(msg, L["trigger_ravageOther"])
-		self:Sync(syncName.ravage.." "..ravagedPlayer)
-	
-	elseif string.find(msg, L["trigger_ravageFade"]) then
-		local _,_, ravageFadePlayer = string.find(msg, L["trigger_ravageFade"])
-		if ravageFadePlayer == "you" then ravageFadePlayer = UnitName("Player") end
-		self:Sync(syncName.ravageFade.." "..ravageFadePlayer)
-		
-		
-	elseif msg == L["trigger_gougeYou"] then
-		self:Sync(syncName.gouge.." "..UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_gougeOther"]) then
-		local _,_, gougedPlayer = string.find(msg, L["trigger_gougeOther"])
-		self:Sync(syncName.gouge.." "..gougedPlayer)
-	
-	elseif string.find(msg, L["trigger_gougeFade"]) then
-		local _,_, gougeFadePlayer = string.find(msg, L["trigger_gougeFade"])
-		if gougeFadePlayer == "you" then gougeFadePlayer = UnitName("Player") end
-		self:Sync(syncName.gougeFade.." "..gougeFadePlayer)
-		
-		
-	elseif msg == L["trigger_swpYou"] then
-		self:Sync(syncName.swp.." "..UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_swpOther"]) then
-		local _,_, swpPlayer = string.find(msg, L["trigger_swpOther"])
-		self:Sync(syncName.swp.." "..swpPlayer)
-	
-	elseif string.find(msg, L["trigger_swpFade"]) then
-		local _,_, swpFadePlayer = string.find(msg, L["trigger_swpFade"])
-		if swpFadePlayer == "you" then swpFadePlayer = UnitName("Player") end
-		self:Sync(syncName.swpFade.." "..swpFadePlayer)
+	end
+end
+
+function module:RavageEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.ravage .. " " .. ev.destName)
+	end
+end
+
+function module:RavageFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.ravageFade .. " " .. ev.destName)
+	end
+end
+
+function module:GougeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.gouge .. " " .. ev.destName)
+	end
+end
+
+function module:GougeFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.gougeFade .. " " .. ev.destName)
+	end
+end
+
+function module:ShadowWordPainEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.swp .. " " .. ev.destName)
+	end
+end
+
+function module:ShadowWordPainFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.swpFade .. " " .. ev.destName)
 	end
 end
 

@@ -1,6 +1,7 @@
 
 local module, L = BigWigs:ModuleDeclaration("Buru the Gorger", "Ruins of Ahn'Qiraj")
 module.revision = 30039
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"watch", "dismember", "phase", "bosskill"}
 
@@ -21,13 +22,8 @@ L:RegisterTranslations("enUS", function() return {
 	
 	trigger_watch = "sets eyes on (.+)!",--CHAT_MSG_MONSTER_EMOTE
 	msg_watch = " is being watched!",
-	trigger_watchEnd = "Buru Egg's Explosion hits Buru the Gorger for",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_watchEnd = "Buru stopped following you.",
 	
-	trigger_dismemberYouOne = "You are afflicted by Dismember.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_dismemberYouMore = "You are afflicted by Dismember %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_dismemberOtherOne = "(.+) is afflicted by Dismember.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-		trigger_dismemberOtherMore = "(.+) is afflicted by Dismember %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_dismember = " Dismember",
 	
 	msg_phase2 = "Phase2, DPS Buru!",
@@ -90,13 +86,8 @@ L:RegisterTranslations("zhCN", function() return {
 	
 	trigger_watch = "sets eyes on (.+)!",--CHAT_MSG_MONSTER_EMOTE
 	msg_watch = " 被布鲁盯上了！",
-	trigger_watchEnd = "Buru Egg's Explosion hits Buru the Gorger for",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_watchEnd = "布鲁不再跟踪你了。",
 	
-	trigger_dismemberYouOne = "You are afflicted by Dismember.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_dismemberYouMore = "You are afflicted by Dismember %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_dismemberOtherOne = "(.+) is afflicted by Dismember.",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-		trigger_dismemberOtherMore = "(.+) is afflicted by Dismember %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_dismember = " 斩杀",
 	
 	msg_phase2 = "第二阶段，DPS全力输出布鲁!",
@@ -128,10 +119,8 @@ function module:OnEnable()
 	self:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")--trigger_watch
 	self:RegisterEvent("UNIT_HEALTH")--p2
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_watchEnd
+	self:RegisterCombatLog({"SPELL_AURA_APPLIED", "SPELL_AURA_APPLIED_DOSE"}, "Dismember", "DismemberEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Explosion", "EggExplosionEvent")
 end
 
 function module:OnSetup()
@@ -168,29 +157,16 @@ function module:UNIT_HEALTH(arg1)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_dismemberYouOne"] then
-		local dismemberPlayerAndDismemberQty = UnitName("Player") .. " " .. "1"
-		self:Sync(syncName.dismember.." "..dismemberPlayerAndDismemberQty)
-	
-	elseif string.find(msg, L["trigger_dismemberYouMore"]) then
-		local _,_,dismemberQty,_ = string.find(msg, L["trigger_dismemberYouMore"])
-		local dismemberPlayerAndDismemberQty = UnitName("Player") .. " " .. dismemberQty
-		self:Sync(syncName.dismember.." "..dismemberPlayerAndDismemberQty)
-	
-	elseif string.find(msg, L["trigger_dismemberOtherMore"]) then
-		local _,_,dismemberPlayer,dismemberQty = string.find(msg, L["trigger_dismemberOtherMore"])
-		local dismemberPlayerAndDismemberQty = dismemberPlayer .. " " .. dismemberQty
-		self:Sync(syncName.dismember.." "..dismemberPlayerAndDismemberQty)
-	
-	elseif string.find(msg, L["trigger_dismemberOtherOne"]) then
-		local _,_,dismemberPlayer = string.find(msg, L["trigger_dismemberOtherOne"])
-		local dismemberPlayerAndDismemberQty = dismemberPlayer .. " " .. "1"
-		self:Sync(syncName.dismember .. " " .. dismemberPlayerAndDismemberQty)
-	
-	
-		
-	elseif string.find(msg, L["trigger_watchEnd"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:DismemberEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.dismember .. " " .. ev.destName .. " " .. (ev.amount or 1))
+	end
+end
+
+-- an egg exploding on Buru ends his chase
+function module:EggExplosionEvent(ev)
+	if ev.sourceName == "Buru Egg" and ev.destName == self.translatedName then
 		self:Sync(syncName.watchEnd)
 	end
 end

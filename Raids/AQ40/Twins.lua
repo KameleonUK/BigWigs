@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("The Twin Emperors", "Ahn'Qiraj")
 
 module.revision = 30075
+module.combatLog = true -- triggers from the combat log; the kill is either emperor dying (UNIT_DIED) or the death yell
 local veklor = AceLibrary("Babble-Boss-2.2")["Emperor Vek'lor"]
 local veknilash = AceLibrary("Babble-Boss-2.2")["Emperor Vek'nilash"]
 local boss = AceLibrary("Babble-Boss-2.2")["The Twin Emperors"]
@@ -41,26 +42,19 @@ L:RegisterTranslations("enUS", function()
 	targeticon_desc = "Puts a star on the caster twin's target and a skull on the melee twin's target",
 	
 	
-	trigger_tp = "gains Twin Teleport.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	bar_tpCd = "Teleport CD",
 	bar_tpOffCd = "Teleport Ready...",
 	msg_tpOffCd = "Teleport within 10sec!",
 	
-	trigger_enrage = "Emperor Vek'nilash becomes enraged.",--??
-	trigger_enrage2 = "Emperor Vek'lor becomes enraged.",--??
 	bar_enrage = "Enrage",
 	msg_enrage60 = "Enrage in 60 seconds",
 	msg_enrage10 = "Enrage in 10 seconds",
 	msg_enrage = "Twins are enraged",
 	
-	trigger_blizzard = "You are afflicted by Blizzard.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_blizzardFade = "Blizzard fades from you.",--CHAT_MSG_SPELL_AURA_GONE_SELF
 	msg_blizzard = "Run from Blizzard!",
 	
-	trigger_explode = "is afflicted by Explode Bug.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
 	msg_explode = "Bug exploding nearby!",
 	
-	trigger_heal = "Heal Brother heals",--??
 	msg_heal = "Twins are healing, separate them!",
 
 	pull_trigger1 = "Ah, lambs to the slaughter.",
@@ -105,23 +99,17 @@ L:RegisterTranslations("zhCN", function() return {
     targeticon_desc = "给施法的双子目标标一个星星，给近战的双子目标标一个骷髅",
     
     
-    trigger_tp = "获得了双子传送的效果。",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     bar_tpCd = "传送冷却",
     bar_tpOffCd = "传送准备...",
     msg_tpOffCd = "10秒内传送！",
     
-    trigger_enrage = "Emperor Vek'nilash becomes enraged.",--??
-    trigger_enrage2 = "Emperor Vek'lor becomes enraged.",--??
     bar_enrage = "狂暴",
     msg_enrage60 = "60秒后狂暴",
     msg_enrage10 = "10秒后狂暴",
     msg_enrage = "双子狂暴了",
     
-    trigger_blizzard = "你受到了暴风雪效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_blizzardFade = "暴风雪效果从你身上消失。",--CHAT_MSG_SPELL_AURA_GONE_SELF
     msg_blizzard = "远离暴风雪！",
     
-    trigger_heal = "治疗兄弟",--??
     msg_heal = "两个BOSS距离太近，快分开他们！",
 
     pull_trigger1 = "啊，待宰的羔羊！",
@@ -177,13 +165,16 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --pull trigger, kill trigger
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_blizzard
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Twin Teleport", "TeleportEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {"Enrage", "Berserk", "Frenzy"}, "EnrageEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Blizzard", "BlizzardEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Blizzard", "BlizzardFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Explode Bug", "ExplodeEvent")
+	self:RegisterCombatLog({"SPELL_HEAL", "SPELL_CAST_SUCCESS"}, "Heal Brother", "HealEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_blizzardFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_tp
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event") --probably enrage
 
 
 	self:ThrottleSync(28, syncName.tp)
@@ -217,12 +208,6 @@ function module:OnDisengage()
 	self:CancelScheduledEvent("veknilashTargetCheck")
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, veklor) or msg == string.format(UNITDIESOTHER, veknilash) then
-		self:SendBossDeathSync()
-	end
-end
-
 function module:VeklorTarget()
 	if UnitName("target") ~= nil and UnitName("targettarget") ~= nil and (IsRaidLeader() or IsRaidOfficer()) then
 		if UnitName("target") == "Emperor Vek'lor" then
@@ -245,23 +230,50 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_tp"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local emperors = { [veklor] = true, [veknilash] = true }
+
+function module:TeleportEvent(ev)
+	if ev.destName and emperors[ev.destName] then
 		self:Sync(syncName.tp)
-		
-	elseif string.find(msg, L["trigger_enrage"]) or string.find(msg, L["trigger_enrage2"]) then
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName and emperors[ev.destName] then
 		self:Sync(syncName.enrage)
-		
-	elseif msg == L["trigger_blizzard"] and self.db.profile.blizzard then
+	end
+end
+
+function module:BlizzardEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.blizzard then
 		self:Blizzard()
-	elseif msg == L["trigger_blizzardFade"] and self.db.profile.blizzard then
+	end
+end
+
+function module:BlizzardFadeEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.blizzard then
 		self:BlizzardFade()
-	
-	elseif string.find(msg, L["trigger_explode"]) and self.db.profile.bug then
+	end
+end
+
+-- a bug mutated to explode
+function module:ExplodeEvent(ev)
+	if self.db.profile.bug then
 		self:Explode()
-	
-	elseif string.find(msg, L["trigger_heal"]) then
+	end
+end
+
+function module:HealEvent(ev)
+	if ev.sourceName and emperors[ev.sourceName] then
 		self:Sync(syncName.heal)
+	end
+end
+
+-- the emperors die together: either one dying is the kill
+function module:UnitDied(ev)
+	if ev.destName and emperors[ev.destName] then
+		self:SendBossDeathSync()
 	end
 end
 

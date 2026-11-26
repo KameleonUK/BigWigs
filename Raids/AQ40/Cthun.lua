@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("C'Thun", "Ahn'Qiraj")
 
 module.revision = 30080
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = { "Eye of C'Thun", "C'Thun" }
 module.toggleoptions = {
 	"cthuneyebeam",
@@ -99,7 +100,6 @@ L:RegisterTranslations("enUS", function()
 
 		bar_startRandomBeams = "Start of Random Beams!",
 
-		trigger_cthun_eyeBeam = "Eye of C'Thun begins to cast Eye Beam.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 		bar_eyeBeam = "Eye Beam on ",
 
 		--no dark glare trigger
@@ -109,26 +109,20 @@ L:RegisterTranslations("enUS", function()
 		msg_darkGlareCasting = "Dark Glare!",
 		msg_darkGlareEndsSoon = "Dark Glare ends in 5 sec",
 
-		trigger_smallEyeTentacles = "Eye Tentacle begins to cast Birth.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		msg_smallEyeTentaclesSoon = "Small Eye Tentacles in 3 sec",
 		bar_smallEyeTentacles = "Small Eye Tentacles",
 		bar_smallEyesDead = "/8 Eye Tentacles Dead",
 
-		trigger_smallClaw = "Claw Tentacle begins to cast Birth.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		bar_smallClaw = "Small Claw Spawn",
 
 		msg_phase2 = "The Eye is dead - Body incoming!",
 
-		trigger_giantClaw = "Giant Claw Tentacle begins to cast Birth.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		bar_giantClaw = "Giant Claw Spawns",
 
-		trigger_giantEye = "Giant Eye Tentacle begins to cast Birth.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		bar_giantEye = "Giant Eye Spawns",
 
-		trigger_giantEye_eyeBeam = "Giant Eye Tentacle begins to cast Eye Beam.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 		--bar_eyeBeam = "Eye Beam on ",
 
-		trigger_groundTremor = "afflicted by Ground Tremor.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 		bar_groundTremorDur = "Ground Tremor Stun",
 
 		bar_windowOfOpportunity = "Window of Opportunity",
@@ -139,7 +133,6 @@ L:RegisterTranslations("enUS", function()
 		msg_weakened = "C'Thun is Weakened!",
 		msg_weakenedFade = "Weaken is Over",
 
-		trigger_digestiveAcid = "You are afflicted by Digestive Acid %((.+)%).", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 		msg_digestiveAcid = " Acid Stacks - Consider getting out of the Stomach",
 
 		hpBar_firstTentacle = "First Tentacle",
@@ -215,7 +208,6 @@ L:RegisterTranslations("zhCN", function() return {
 	
     bar_startRandomBeams = "随机眼棱开始！",
 
-	trigger_cthun_eyeBeam = "克苏恩之眼开始施放眼棱。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_eyeBeam = "眼棱即将攻击 ",
 	
 	--no dark glare trigger
@@ -225,26 +217,20 @@ L:RegisterTranslations("zhCN", function() return {
     msg_darkGlareCasting = "黑暗闪耀！",
     msg_darkGlareEndsSoon = "黑暗闪耀将在5秒内结束",
 	
-	trigger_smallEyeTentacles = "眼球触须开始施放出生。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     msg_smallEyeTentaclesSoon = "小眼触须将在3秒内出现",
 	bar_smallEyeTentacles = "小眼触须",
 	bar_smallEyesDead = "/8 小眼触须已死",
 	
-	trigger_smallClaw = "利爪触须开始施放出生。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     bar_smallClaw = "小爪刷新",
 
     msg_phase2 = "眼睛已死 - 本体即将出现！",
 	
-	trigger_giantClaw = "巨型利爪触须开始施放出生。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     bar_giantClaw = "巨型利爪触须刷新",
 	
-	trigger_giantEye = "巨眼触须开始施放出生。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     bar_giantEye = "巨眼触须刷新",
 	
-	trigger_giantEye_eyeBeam = "巨眼触须开始施放眼棱。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	--bar_eyeBeam = "Eye Beam on ",
 	
-	trigger_groundTremor = "受到了大地震颤效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     bar_groundTremorDur = "大地震颤昏迷",
 	
     bar_windowOfOpportunity = "机会窗口",
@@ -255,7 +241,6 @@ L:RegisterTranslations("zhCN", function() return {
     msg_weakened = "克苏恩虚弱了！",
     msg_weakenedFade = "虚弱结束",
 	
-	trigger_digestiveAcid = "你受到了消化酸液效果的影响%（(.+)%）。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     msg_digestiveAcid = " 消化酸层数过高 - 考虑离开胃部",
 	
     hpBar_firstTentacle = "第一个触须",
@@ -388,13 +373,13 @@ function module:OnEnable()
 
 	--self:RegisterEvent("UNIT_HEALTH") --stomach tentacles hp
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_cthun_eyeBeam, trigger_giantEye_eyeBeam
+	self:RegisterCombatLog("SPELL_CAST_START", "Eye Beam", "EyeBeamEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Birth", "BirthEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Ground Tremor", "GroundTremorEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", "Digestive Acid", "DigestiveAcidEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event") --trigger_smallEyeTentacles, trigger_smallClaw, trigger_giantClaw, trigger_giantEye
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_groundTremor, trigger_digestiveAcid
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_groundTremor
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_groundTremor
 
 
 	self:ThrottleSync(1, syncName.eyeBeam)
@@ -424,7 +409,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -532,22 +516,21 @@ function module:ResetModule()
 	self:CancelScheduledEvent("CThunCheckTentacleHP")
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Eye of C'Thun")) then
+-- UNIT_DIED: the eye (phase 2), the tentacles (C'Thun's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Eye of C'Thun" then
 		self:Sync(syncName.phase2)
 
-	elseif (msg == string.format(UNITDIESOTHER, "Giant Claw Tentacle")) then
+	elseif ev.destName == "Giant Claw Tentacle" then
 		self:Sync(syncName.window)
 
-	elseif (msg == string.format(UNITDIESOTHER, "Giant Eye Tentacle")) then
+	elseif ev.destName == "Giant Eye Tentacle" then
 		self:Sync(syncName.window)
 
-	elseif (msg == string.format(UNITDIESOTHER, "Flesh Tentacle")) and not firstStomachTentacleDead then
+	elseif ev.destName == "Flesh Tentacle" and not firstStomachTentacleDead then
 		self:Sync(syncName.firstStomachTentacleDead)
 
-	elseif (msg == string.format(UNITDIESOTHER, "Eye Tentacle")) then
+	elseif ev.destName == "Eye Tentacle" then
 		smallEyeDead = smallEyeDead + 1
 		smallEyeDeadCounter = 8 - smallEyeDead
 		self:TriggerEvent("BigWigs_SetCounterBar", self, L["bar_smallEyesDead"], smallEyeDeadCounter)
@@ -608,37 +591,43 @@ function module:UNIT_HEALTH(msg)
 end
 ]]--
 
-function module:Event(msg)
-	if msg == L["trigger_cthun_eyeBeam"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:EyeBeamEvent(ev)
+	if ev.sourceName == "Eye of C'Thun" then
 		if not cthunStarted then
 			module:SendEngageSync()
 		end
 		self:Sync(syncName.eyeBeam)
-
-	elseif msg == L["trigger_smallEyeTentacles"] then
-		self:Sync(syncName.smallEyeTentacles)
-
-	elseif msg == L["trigger_smallClaw"] then
-		self:Sync(syncName.smallClaw)
-
-	elseif msg == L["trigger_giantClaw"] then
-		self:Sync(syncName.giantClaw)
-
-	elseif msg == L["trigger_giantEye"] then
-		self:Sync(syncName.giantEye)
-
-
-	elseif msg == L["trigger_giantEye_eyeBeam"] then
+	elseif ev.sourceName == "Giant Eye Tentacle" then
 		self:Sync(syncName.eyeBeam)
+	end
+end
 
-	elseif string.find(msg, L["trigger_groundTremor"]) then
+-- a tentacle spawning ("Birth") tells which kind
+local births = {
+	["Eye Tentacle"] = "smallEyeTentacles",
+	["Claw Tentacle"] = "smallClaw",
+	["Giant Claw Tentacle"] = "giantClaw",
+	["Giant Eye Tentacle"] = "giantEye",
+}
+
+function module:BirthEvent(ev)
+	local sync = ev.sourceName and births[ev.sourceName]
+	if sync then
+		self:Sync(syncName[sync])
+	end
+end
+
+function module:GroundTremorEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.groundTremor)
+	end
+end
 
-	elseif string.find(msg, L["trigger_digestiveAcid"]) and self.db.profile.acid then
-		local _, _, acidQty, _ = string.find(msg, L["trigger_digestiveAcid"])
-		if tonumber(acidQty) >= 5 then
-			self:DigestiveAcid(acidQty)
-		end
+-- your own Digestive Acid stacks in the stomach
+function module:DigestiveAcidEvent(ev)
+	if self.db.profile.acid and ev.amount and ev.amount >= 5 and ev.destGUID and ev.destGUID == UnitGUID("player") then
+		self:DigestiveAcid(ev.amount)
 	end
 end
 

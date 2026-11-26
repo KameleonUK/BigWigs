@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Vaelastrasz the Corrupt", "Blackwing Lair")
 
 module.revision = 30085
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"start", "adrenaline", "icon","flamebreath", "flamebreathdot", "firenova", "tailsweep", "parry", "bosskill"}
 
@@ -47,36 +48,23 @@ L:RegisterTranslations("enUS", function() return {
 	bar_gossip = "Engage",
 	msg_gossip = "Vaelastrasz Event Started!",
 	
-	trigger_engage = "afflicted by Essence of the Red.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	
 	--burning adrenaline on mana user every 15sec, every 45s on the tank ALSO
 		-- -5% hp per second
-	trigger_adrenalineYou = "You are afflicted by Burning Adrenaline.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_adrenalineOther = "(.+) is afflicted by Burning Adrenaline.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_adrenalineFade = "Burning Adrenaline fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER --guessing
 	bar_adrenalineCd = "Burning Adrenaline CD",
 	bar_adrenalineDur = " Burning!",
 	msg_adrenaline = " has Burning Adrenaline",
 	
-	trigger_dieYou = "You die.", --CHAT_MSG_COMBAT_FRIENDLY_DEATH
-	trigger_dieOther = "(.+) dies.", --CHAT_MSG_COMBAT_FRIENDLY_DEATH
 	
-	trigger_flameBreath = "Vaelastrasz the Corrupt begins to cast Flame Breath.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_flameBreathCd = "Flame Breath CD",
 	bar_flameBreathCast = "Casting Flame Breath!",
 	
-	trigger_flameBreathDotYou = "You are afflicted by Flame Breath %((.+)%).", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_flameBreathDotOther = "(.+) is afflicted by Flame Breath %((.+)%).", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_flameBreathDotFade = "Flame Breath fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_flameBreathDot = " Flame Breath DoT",
 	
-	trigger_fireNova = "Vaelastrasz the Corrupt's Fire Nova", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_fireNova = "Fire Nova CD",
 	
-	trigger_tailSweepYou = "Vaelastrasz the Corrupt's Tail Sweep hits you", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	msg_tailSweep = "Tail Sweep hits behind the boss for 30 yards.",
 	
-	trigger_parryYou = "You attack. Vaelastrasz the Corrupt parries.", --CHAT_MSG_COMBAT_SELF_MISSES
 	msg_parryYou = "Vaelastrasz the Corrupt Parried your attack - Stop killing the tank you idiot!",
 } end)
 
@@ -141,19 +129,19 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_gossip1,2,3
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_engage, trigger_adrenalineYou, trigger_flameBreathDotYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_engage, trigger_adrenalineOther, trigger_flameBreathDotOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_engage, trigger_adrenalineOther, trigger_flameBreathDotFade
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {23513, "Essence of the Red"}, "EssenceEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {18173, "Burning Adrenaline"}, "AdrenalineEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {18173, "Burning Adrenaline"}, "AdrenalineFadeEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {23461, "Flame Breath"}, "FlameBreathEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", {23461, "Flame Breath"}, "FlameBreathDotEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {23461, "Flame Breath"}, "FlameBreathDotFadeEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {23462, "Fire Nova"}, "FireNovaEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", {15847, "Tail Sweep"}, "TailSweepEvent")
+	self:RegisterCombatLog("SWING_MISSED", nil, "ParryEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_adrenalineFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_adrenalineFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_adrenalineFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_tailSweepYou, trigger_fireNova
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_fireNova
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_flameBreath, trigger_fireNova
 	
-	self:RegisterEvent("CHAT_MSG_COMBAT_SELF_MISSES", "Event") --trigger_parryYou
 	
 	
 	self:ThrottleSync(2, syncName.gossip1)
@@ -174,7 +162,6 @@ end
 function module:OnSetup()
 	self.started = nil
 	
-	self:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLY_DEATH") --trigger_dieYou, trigger_dieOther
 end
 
 function module:OnEngage()
@@ -200,18 +187,15 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_FRIENDLY_DEATH(msg)
+-- UNIT_DIED: a raid member dying loses Burning Adrenaline
+function module:UnitDied(ev)
+	if not ev.destName or not BigWigs:IsGroupMember(ev.destFlags) then
+		return
+	end
 	if engaged then
 		BigWigs:CheckForWipe(self)
 	end
-	
-	if msg == L["trigger_dieYou"] then
-		self:Sync(syncName.adrenalinePlayerFade .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_dieOther"]) then
-		local _, _, deadPerson = string.find(msg, L["trigger_dieOther"])
-		self:Sync(syncName.adrenalinePlayerFade .. " " .. deadPerson)
-	end
+	self:Sync(syncName.adrenalinePlayerFade .. " " .. ev.destName)
 end
 
 function module:CHAT_MSG_MONSTER_YELL(msg)
@@ -226,60 +210,64 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_engage"]) then
-		module:SendEngageSync()
-		
-	elseif msg == L["trigger_adrenalineYou"] then
-		self:Sync(syncName.adrenalinePlayer .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_adrenalineOther"]) then
-		local _,_,adrenalinePlayer,_ = string.find(msg, L["trigger_adrenalineOther"])
-		self:Sync(syncName.adrenalinePlayer .. " " .. adrenalinePlayer)
-		
-	elseif string.find(msg, L["trigger_adrenalineFade"]) then
-		local _,_,adrenalineFadePlayer,_ = string.find(msg, L["trigger_adrenalineFade"])
-		if adrenalineFadePlayer == "you" then adrenalineFadePlayer = UnitName("Player") end
-		self:Sync(syncName.adrenalinePlayerFade .. " " .. adrenalineFadePlayer)
-	
-	
-	elseif msg == L["trigger_flameBreath"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local function IsMe(guid)
+	return guid and guid == UnitGUID("player")
+end
+
+-- the gossip gives everyone Essence of the Red as the fight starts
+function module:EssenceEvent(ev)
+	module:SendEngageSync()
+end
+
+function module:AdrenalineEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.adrenalinePlayer .. " " .. ev.destName)
+	end
+end
+
+function module:AdrenalineFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.adrenalinePlayerFade .. " " .. ev.destName)
+	end
+end
+
+function module:FlameBreathEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.flameBreath)
-	
-	
-	elseif string.find(msg, L["trigger_flameBreathDotYou"]) then
-		local _,_,flameBreathDotQty,_ = string.find(msg, L["trigger_flameBreathDotYou"])
-		if tonumber(flameBreathDotQty) >= 3 then
-			local flameBreathDotPlayer = UnitName("Player")
-			local playerAndQuantity = flameBreathDotPlayer .. " " .. flameBreathDotQty
-			self:Sync(syncName.flameBreathDot.." "..playerAndQuantity)
-		end
-	
-	elseif string.find(msg, L["trigger_flameBreathDotOther"]) then
-		local _,_,flameBreathDotPlayer,flameBreathDotQty = string.find(msg, L["trigger_flameBreathDotOther"])
-		-- player names have no spaces; totems and pets that catch the breath (e.g. "Fire Resistance Totem") are skipped
-		if not string.find(flameBreathDotPlayer, " ", 1, true) and tonumber(flameBreathDotQty) and tonumber(flameBreathDotQty) >= 3 then
-			local playerAndQuantity = flameBreathDotPlayer .. " " .. flameBreathDotQty
-			self:Sync(syncName.flameBreathDot.." "..playerAndQuantity)
-		end
-		
-	elseif string.find(msg, L["trigger_flameBreathDotFade"]) then
-		local _,_,flameBreathDotFadePlayer,_ = string.find(msg, L["trigger_flameBreathDotFade"])
-		if flameBreathDotFadePlayer == "you" then flameBreathDotFadePlayer = UnitName("Player") end
-		self:Sync(syncName.flameBreathDotFade .. " " .. flameBreathDotFadePlayer)
-		
-		
-	elseif string.find(msg, L["trigger_fireNova"]) then
+	end
+end
+
+-- Flame Breath stacks of 3 or more on a player (totems and pets that catch it are skipped)
+function module:FlameBreathDotEvent(ev)
+	if ev.destName and ev.amount and ev.amount >= 3 and BigWigs:IsGroupMember(ev.destFlags) and not string.find(ev.destName, " ", 1, true) then
+		self:Sync(syncName.flameBreathDot .. " " .. ev.destName .. " " .. ev.amount)
+	end
+end
+
+function module:FlameBreathDotFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.flameBreathDotFade .. " " .. ev.destName)
+	end
+end
+
+function module:FireNovaEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.fireNova)
-		
-	elseif string.find(msg, L["trigger_tailSweepYou"]) and self.db.profile.tailsweep then
+	end
+end
+
+function module:TailSweepEvent(ev)
+	if ev.sourceName == self.translatedName and IsMe(ev.destGUID) and self.db.profile.tailsweep then
 		self:TailSweep()
-		
-	elseif string.find(msg, L["trigger_parryYou"]) and self.db.profile.parry then
-		if UnitName("Target") ~= nil and UnitName("TargetTarget") ~= nil then
-			if UnitName("Target") == "Vaelastrasz the Corrupt" and UnitName("TargetTarget") ~= UnitName("Player") then
-				self:ParryYou()
-			end
+	end
+end
+
+-- your melee parried by Vaelastrasz while he isn't targeting you
+function module:ParryEvent(ev)
+	if ev.missType == "PARRY" and ev.destName == self.translatedName and IsMe(ev.sourceGUID) and self.db.profile.parry then
+		if UnitName("Target") == self.translatedName and UnitName("TargetTarget") and UnitName("TargetTarget") ~= UnitName("Player") then
+			self:ParryYou()
 		end
 	end
 end

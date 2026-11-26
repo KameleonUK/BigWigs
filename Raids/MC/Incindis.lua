@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Incindis", "Molten Core")
 
 module.revision = 30001
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"firenova", "bosskill"}
 module.zonename = {
@@ -15,7 +16,6 @@ L:RegisterTranslations("enUS", function() return {
 	firenova_name = "Fire Nova Alert",
 	firenova_desc = "Warn for incoming Fire Nova after Quaking Stomp",
 
-	trigger_quakingStomp = "Incindis's Quaking Stomp hits (.+) for",
 	bar_fireNova = "Fire Nova!",
 	msg_fireNova = "FIRE NOVA - RUN AWAY!",
 } end)
@@ -34,9 +34,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {42036, "Quaking Stomp"}, "StompEvent")
 
 	self:ThrottleSync(1, syncName.quakingStomp)
 end
@@ -51,8 +49,9 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_quakingStomp"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:StompEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.quakingStomp)
 	end
 end
@@ -75,6 +74,6 @@ end
 function module:Test()
 	BigWigs:ToggleActive(true)
 	BigWigs:EnableModule(self:ToString())
-	self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Incindis's Quaking Stomp hits Pookers for 975.")
+	BigWigs:TestCombatLogText("Incindis's Quaking Stomp hits Pookers for 975.")
 end
 -- /run BigWigs:GetModule("Incindis"):Test()

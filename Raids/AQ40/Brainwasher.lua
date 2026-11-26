@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Qiraji Brainwasher", "Ahn'Qiraj")
 
 module.revision = 30075
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "mc", "mindflay" }
 module.trashMod = true
@@ -21,15 +22,8 @@ L:RegisterTranslations("enUS", function()
 		mindflay_desc = "Warn for Mind Flay",
 
 
-		trigger_mcYou = "You are afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_mcOther2 = "(.+) %(.+%) is afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE new client pet message format
-		trigger_mcOther = "(.+) is afflicted by Cause Insanity", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_mcFade = "Cause Insanity fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_mc = " MC",
 
-		trigger_mindFlayYou = "You are afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_mindFlayOther = "(.+) is afflicted by Mind Flay.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_mindFlayFade = "Mind Flay fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_mindFlay = " Mind Flay",
 
 		["You have slain %s!"] = true,
@@ -51,14 +45,8 @@ L:RegisterTranslations("zhCN", function() return {
     mindflay_desc = "心灵震爆出现时进行警告",
 
 
-    trigger_mcYou = "You are afflicted by Cause Insanity.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_mcOther = "(.+) is afflicted by Cause Insanity.",--CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_mcFade = "Cause Insanity fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_mc = " 精神控制",
 
-    trigger_mindFlayYou = "你受到了精神鞭笞效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_mindFlayOther = "(.+)受到了精神鞭笞效果的影响。",--CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_mindFlayFade = "精神鞭笞效果从(.+)身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_mindFlay = " 精神鞭笞（死缠效果）",
 
     ["You have slain %s!"] = "你已经击败了%s！",
@@ -85,17 +73,14 @@ local syncName = {
 }
 
 function module:OnEnable()
-	--self:RegisterEvent("CHAT_MSG_SAY", "Events")--Debug
+	
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Events")--trigger_mcOther, trigger_mindFlayOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Cause Insanity", "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Cause Insanity", "McFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Mind Flay", "MindFlayEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Mind Flay", "MindFlayFadeEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Events")--trigger_mcYou, trigger_mindFlayYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Events")--trigger_mcYou, trigger_mindFlayOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Events")--trigger_mcYou, trigger_mindFlayOther
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Events")--trigger_mcFade, trigger_mindFlayFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Events")--trigger_mcFade, trigger_mindFlayFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Events")--trigger_mcFade, trigger_mindFlayFade
 
 
 	self:ThrottleSync(1, syncName.mc)
@@ -117,81 +102,28 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-			or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then
-				return false
-			end
-			if type(t) == "string" then
-				t = { t }
-			end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
 	end
 end
 
-function module:Events(msg)
-	if msg == L["trigger_mcYou"] then
-		self:Sync(syncName.mc .. " " .. UnitName("Player"))
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _, _, mcPerson, _ = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
+function module:MindFlayEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.mindFlay .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _, _, mcPerson, _ = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
-
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _, _, mcFadePerson, _ = string.find(msg, L["trigger_mcFade"])
-		if mcFadePerson == "you" then
-			mcFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.mcFade .. " " .. mcFadePerson)
-
-
-	elseif msg == L["trigger_mindFlayYou"] then
-		self:Sync(syncName.mindFlay .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_mindFlayOther"]) then
-		local _, _, mindFlayPerson, _ = string.find(msg, L["trigger_mindFlayOther"])
-		self:Sync(syncName.mindFlay .. " " .. mindFlayPerson)
-
-	elseif string.find(msg, L["trigger_mindFlayFade"]) then
-		local _, _, mindFlayFadePerson, _ = string.find(msg, L["trigger_mindFlayFade"])
-		if mindFlayFadePerson == "you" then
-			mindFlayFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.mindFlayFade .. " " .. mindFlayFadePerson)
+function module:MindFlayFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.mindFlayFade .. " " .. ev.destName)
 	end
 end
 

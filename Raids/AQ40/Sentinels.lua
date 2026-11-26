@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Anubisath Sentinel", "Ahn'Qiraj")
 
 module.revision = 30082
+module.combatLog = true -- triggers from the combat log; deaths count the pack, a kill does not end the module (as before)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"abilities", "selfreflect"}
 module.trashMod = true
@@ -42,27 +43,14 @@ L:RegisterTranslations("enUS", function() return {
 	bar_thunderClap = " has Thunderclap",
 	buffIcon_thunderClap = "Interface\\Icons\\Ability_ThunderClap",   
 
-	trigger_fireArcaneReflect1 = "Your Moonfire is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflect2 = "Your Scorch is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflect3 = "Your Flame Shock is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflect4 = "Your Fireball is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflect5 = "Your Flame Lash is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflect6 = "Your Detect Magic is reflected back by Anubisath Sentinel.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_fireArcaneReflectOther = "(.+)'s Detect Magic is reflected back by Anubisath Sentinel.",--CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE
 	bar_fireArcaneReflect = " reflect Fire & Arcane",
 		--not used for TurtleWoW
 	--buffIcon_fireArcaneReflect = "nil",
 	
-	trigger_shadowFrostReflect1 = "Your Shadow Word: Pain is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_shadowFrostReflect2 = "Your Corruption is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_shadowFrostReflect3 = "Your Frostbolt is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_shadowFrostReflect4 = "Your Frost Shock is reflected back by Anubisath Defender.",--CHAT_MSG_SPELL_SELF_DAMAGE
-	trigger_shadowFrostReflectOther = "(.+)'s Corruption is reflected back by Anubisath Sentinel.",--CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE
 	bar_shadowFrostReflect = " reflect Shadow & Frost",
 		--not used for TurtleWoW
 	--buffIcon_shadowFrostReflect = "Interface\\Icons\\Spell_Arcane_Blink",
 	
-	trigger_selfReflect = "Your (.*) is reflected back by Anubisath Sentinel.",--CHAT_MSG_SPELL_SELF_DAMAGE
 	msg_selfReflect = "STOP KILLING YOURSELF!",
 	
 	["You have slain %s!"] = true,
@@ -104,27 +92,14 @@ L:RegisterTranslations("zhCN", function() return {
     bar_thunderClap = " 有雷霆一击",
     buffIcon_thunderClap = "Interface\\Icons\\Ability_ThunderClap",
 
-    trigger_fireArcaneReflect1 = "你的月火术被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflect2 = "你的灼烧被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflect3 = "你的烈焰震击被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflect4 = "你的火球术被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflect5 = "你的烈焰鞭笞被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflect6 = "你的侦测魔法被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_fireArcaneReflectOther = "(.+)的侦测魔法被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE
     bar_fireArcaneReflect = " 反射火焰 & 奥术",
         --not used for TurtleWoW
     --buffIcon_fireArcaneReflect = "nil",
     
-    trigger_shadowFrostReflect1 = "你的暗言术：痛被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_shadowFrostReflect2 = "你的腐蚀术被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_shadowFrostReflect3 = "你的寒冰箭被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_shadowFrostReflect4 = "你的冰霜震击被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
-    trigger_shadowFrostReflectOther = "(.+)的腐蚀术被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE
     bar_shadowFrostReflect = " 反射暗影 & 冰霜",
         --not used for TurtleWoW
     --buffIcon_shadowFrostReflect = "Interface\\Icons\\Spell_Arcane_Blink",
     
-    trigger_selfReflect = "你的(.*)被阿努比萨斯哨兵反弹回来。",--CHAT_MSG_SPELL_SELF_DAMAGE
     msg_selfReflect = "停止自残！",
     
     ["You have slain %s!"] = "你杀死了%s！",
@@ -201,9 +176,8 @@ local addDead = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE", "Event") --trigger_selfReflect, reflect type detection
-	self:RegisterEvent("CHAT_MSG_SPELL_PARTY_DAMAGE", "Event") --reflect type detection
-	self:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE", "Event") --reflect type detection
+	self:RegisterCombatLog("SPELL_MISSED", nil, "ReflectEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
 	
 	self:ThrottleSync(5, syncName.knockBack)
@@ -222,7 +196,6 @@ end
 function module:OnSetup()
 	self.started = nil
 	
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -350,10 +323,9 @@ function module:OnDisengage()
 	self:CancelScheduledEvent("AbilitiesScan")
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	--BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Anubisath Sentinel")) then
+-- UNIT_DIED: the Sentinel counter (a kill never ended this module, and still doesn't)
+function module:UnitDied(ev)
+	if ev.destName == self.translatedName then
 		addDead = addDead + 1
 		if addDead <= 4 then
 			self:Sync(syncName.addDead .. " " .. addDead)
@@ -361,136 +333,28 @@ function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
 	end
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("Target") and UnitAffectingCombat("Target") then
-				local target = UnitName("Target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-			self:TriggerEvent("BigWigs_RebootModule", module.translatedName)
-		end
-	end
+function module:BossUnitDied(ev)
 end
 
-function module:Event(msg)
-	if msg == "add" then
-		addDead = addDead + 1
-		if addDead <= 4 then
-			self:Sync(syncName.addDead .. " " .. addDead)
-		end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local markName = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
+local fireArcane = { ["Moonfire"] = true, ["Scorch"] = true, ["Flame Shock"] = true, ["Fireball"] = true, ["Flame Lash"] = true, ["Detect Magic"] = true }
+local shadowFrost = { ["Shadow Word: Pain"] = true, ["Corruption"] = true, ["Frostbolt"] = true, ["Frost Shock"] = true }
+
+-- a spell reflected by a Sentinel: the school tells which reflection it has, its raid mark which Sentinel
+function module:ReflectEvent(ev)
+	if ev.missType ~= "REFLECT" or ev.destName ~= self.translatedName then
+		return
 	end
-	--debug
-	
-	if string.find(msg, L["trigger_selfReflect"]) and self.db.profile.selfreflect and not (string.find(msg, "Elemental Vulnerability") or string.find(msg, "Fire Strike")) then
+	local spell = ev.spellName or ""
+	if ev.sourceGUID and ev.sourceGUID == UnitGUID("player") and self.db.profile.selfreflect and spell ~= "Elemental Vulnerability" and spell ~= "Fire Strike" then
 		self:SelfReflect()
 	end
-	
-	
-	-- Arcane Reflect
-	if fireArcaneReflectFound == nil and UnitName("Target") == "Anubisath Sentinel" and
-		string.find(msg, L["trigger_fireArcaneReflect1"]) or
-	string.find(msg, L["trigger_fireArcaneReflect2"]) or
-	string.find(msg, L["trigger_fireArcaneReflect3"]) or
-	string.find(msg, L["trigger_fireArcaneReflect4"]) or
-	string.find(msg, L["trigger_fireArcaneReflect5"]) or
-	string.find(msg, L["trigger_fireArcaneReflect6"]) then
-		if GetRaidTargetIndex("Target") == nil	then raidIcon_fireArcaneReflect = "No Icon"		end
-		if GetRaidTargetIndex("Target") == 1	then raidIcon_fireArcaneReflect = "Star"		end
-		if GetRaidTargetIndex("Target") == 2	then raidIcon_fireArcaneReflect = "Circle"		end
-		if GetRaidTargetIndex("Target") == 3	then raidIcon_fireArcaneReflect = "Diamond"		end
-		if GetRaidTargetIndex("Target") == 4	then raidIcon_fireArcaneReflect = "Triangle"	end
-		if GetRaidTargetIndex("Target") == 5	then raidIcon_fireArcaneReflect = "Moon"		end
-		if GetRaidTargetIndex("Target") == 6	then raidIcon_fireArcaneReflect = "Square"		end
-		if GetRaidTargetIndex("Target") == 7	then raidIcon_fireArcaneReflect = "Cross"		end
-		if GetRaidTargetIndex("Target") == 8	then raidIcon_fireArcaneReflect = "Skull"		end
-		self:Sync(syncName.fireArcaneReflect .. " "..raidIcon_fireArcaneReflect)
-	
-	elseif fireArcaneReflectFound == nil and UnitName("Target") == "Anubisath Sentinel" and string.find(msg, L["trigger_fireArcaneReflectOther"]) then
-		local _,_, arcaneFireReflectPerson, _ = string.find(msg, L["trigger_fireArcaneReflectOther"])
-		for i=1,GetNumRaidMembers() do
-			if UnitName("Raid"..i) == arcaneFireReflectPerson then
-				if UnitName("Raid"..i.."Target") == "Anubisath Sentinel" then
-					if GetRaidTargetIndex("Raid"..i.."Target")== nil then raidIcon_fireArcaneReflect = "No Icon"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 1	then raidIcon_fireArcaneReflect = "Star"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 2	then raidIcon_fireArcaneReflect = "Circle"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 3	then raidIcon_fireArcaneReflect = "Diamond"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 4	then raidIcon_fireArcaneReflect = "Triangle"	end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 5	then raidIcon_fireArcaneReflect = "Moon"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 6	then raidIcon_fireArcaneReflect = "Square"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 7	then raidIcon_fireArcaneReflect = "Cross"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 8	then raidIcon_fireArcaneReflect = "Skull"		end
-				end
-				break
-			end
-		end
-		self:Sync(syncName.fireArcaneReflect .. " "..raidIcon_fireArcaneReflect)
-		
-	
-	-- Shadow Reflect
-	elseif shadowFrostReflectFound == nil and UnitName("Target") == "Anubisath Sentinel" and
-		string.find(msg, L["trigger_shadowFrostReflect1"]) or
-	string.find(msg, L["trigger_shadowFrostReflect2"]) or
-	string.find(msg, L["trigger_shadowFrostReflect3"]) or
-	string.find(msg, L["trigger_shadowFrostReflect4"]) then
-		if GetRaidTargetIndex("Target") == nil	then raidIcon_shadowFrostReflect = "No Icon"	end
-		if GetRaidTargetIndex("Target") == 1	then raidIcon_shadowFrostReflect = "Star"		end
-		if GetRaidTargetIndex("Target") == 2	then raidIcon_shadowFrostReflect = "Circle"		end
-		if GetRaidTargetIndex("Target") == 3	then raidIcon_shadowFrostReflect = "Diamond"	end
-		if GetRaidTargetIndex("Target") == 4	then raidIcon_shadowFrostReflect = "Triangle"	end
-		if GetRaidTargetIndex("Target") == 5	then raidIcon_shadowFrostReflect = "Moon"		end
-		if GetRaidTargetIndex("Target") == 6	then raidIcon_shadowFrostReflect = "Square"		end
-		if GetRaidTargetIndex("Target") == 7	then raidIcon_shadowFrostReflect = "Cross"		end
-		if GetRaidTargetIndex("Target") == 8 	then raidIcon_shadowFrostReflect = "Skull"		end
-		self:Sync(syncName.shadowFrostReflect .. " "..raidIcon_shadowFrostReflect)
-	
-		
-	elseif shadowFrostReflectFound == nil and UnitName("Target") == "Anubisath Sentinel" and string.find(msg, L["trigger_shadowFrostReflectOther"]) then
-		local _,_, shadowFrostReflectPerson, _ = string.find(msg, L["trigger_shadowFrostReflectOther"])
-		for i=1,GetNumRaidMembers() do
-			if UnitName("Raid"..i) == shadowFrostReflectPerson then
-				if UnitName("Raid"..i.."Target") == "Anubisath Sentinel" then
-					if GetRaidTargetIndex("Raid"..i.."Target")== nil then raidIcon_shadowFrostReflect = "No Icon"	end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 1	then raidIcon_shadowFrostReflect = "Star"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 2	then raidIcon_shadowFrostReflect = "Circle"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 3	then raidIcon_shadowFrostReflect = "Diamond"	end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 4	then raidIcon_shadowFrostReflect = "Triangle"	end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 5	then raidIcon_shadowFrostReflect = "Moon"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 6	then raidIcon_shadowFrostReflect = "Square"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 7	then raidIcon_shadowFrostReflect = "Cross"		end
-					if GetRaidTargetIndex("Raid"..i.."Target")== 8	then raidIcon_shadowFrostReflect = "Skull"		end
-				end
-				break
-			end
-		end
-		self:Sync(syncName.shadowFrostReflect .. " "..raidIcon_shadowFrostReflect)
+	local mark = markName[BigWigs:RaidFlagsToMark(ev.destRaidFlags) or 0] or "No Icon"
+	if fireArcaneReflectFound == nil and fireArcane[spell] then
+		self:Sync(syncName.fireArcaneReflect .. " " .. mark)
+	elseif shadowFrostReflectFound == nil and shadowFrost[spell] then
+		self:Sync(syncName.shadowFrostReflect .. " " .. mark)
 	end
 end
 

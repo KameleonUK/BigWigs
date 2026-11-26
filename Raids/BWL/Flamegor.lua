@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Flamegor", "Blackwing Lair")
 
 module.revision = 30141
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wingbuffet", "shadowflame", "frenzy", -1, "mcalert", "mcbar", "mcmark", "bosskill"}
 module.defaultDB = {
@@ -36,32 +37,22 @@ L:RegisterTranslations("enUS", function() return {
 	mcmark_desc = "Mark the victim of Overbearing Rage with Diamond",
 	
 	
-	trigger_wingBuffet = "Flamegor begins to cast Wing Buffet.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_wingBuffetCast = "Casting Wing Buffet!",
 	bar_wingBuffetCd = "Wing Buffet CD",
 	msg_wingBuffetCast = "Casting Wing Buffet!",
 	msg_wingBuffetSoon = "Wing Buffet in 2 seconds - Taunt now!",
 	
-	trigger_shadowFlameCast = "Flamegor begins to cast Shadow Flame.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE - seems to no longer appear in logs since 1.18
 	bar_shadowFlameCast = "Casting Shadow Flame!",
 	msg_shadowFlameCast = "Casting Shadow Flame!",
-	trigger_shadowFlameHit = "Flamegor's Shadow Flame hits", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_shadowFlameCd = "Shadow Flame CD",
 	
-	trigger_frenzy = "Flamegor gains Frenzy.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_frenzyFade = "Frenzy fades from Flamegor.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_frenzyCd = "Frenzy CD",
 	bar_frenzyDur = "Frenzy!",
 	msg_frenzy = "Frenzy - Tranq now!",
 	
-	trigger_mcYou = "You are afflicted by Overbearing Rage", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_mcOther1 = "(.+) is afflicted by Overbearing Rage", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcOther2 = "(.+) %(Flamegor%) is afflicted by Overbearing Rage", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcFade = "Overbearing Rage fades from (.+)%.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_mc = "%s Rage",
 	msg_mc = "%s raging out! - bring to 25%% or kill boss",
 	
-	trigger_death = "(.+) dies%."
 } end)
 
 local timer = {
@@ -112,22 +103,18 @@ local frenzyEndTime = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_frenzy
+	self:RegisterCombatLog("SPELL_CAST_START", {23339, "Wing Buffet"}, "WingBuffetEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {22539, "Shadow Flame"}, "ShadowFlameCastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, {22539, "Shadow Flame"}, "ShadowFlameHitEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {23342, "Frenzy"}, "FrenzyEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {23342, "Frenzy"}, "FrenzyFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Overbearing Rage", "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Overbearing Rage", "McFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_wingBuffet, trigger_shadowFlameCast, trigger_shadowFlameHit
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "AfflictionEvent") --trigger_mcYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "AfflictionEvent") --trigger_mcOther
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "FadesEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "FadesEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "FadesEvent")--trigger_frenzyFade
 	
-	if SUPERWOW_VERSION or SetAutoloot then
-		self:RegisterEvent("UNIT_CASTEVENT")
-	end
 	
 	
 	self:ThrottleSync(3, syncName.wingBuffet)
@@ -165,61 +152,55 @@ function module:OnDisengage()
 end
 
 
-function module:Event(msg)
-	if msg == L["trigger_wingBuffet"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WingBuffetEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.wingBuffet)
-	
-	elseif msg == L["trigger_shadowFlameCast"] then
+	end
+end
+
+function module:ShadowFlameCastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.shadowFlameCast)
-	
-	elseif string.find(msg, L["trigger_shadowFlameHit"]) then
+	end
+end
+
+function module:ShadowFlameHitEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.shadowFlameHit)
-	
-	elseif msg == L["trigger_frenzy"] then
+	end
+end
+
+function module:FrenzyEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.frenzy)
 	end
 end
 
-function module:AfflictionEvent(msg)
-	if string.find(msg, L["trigger_mcYou"]) then
-		self:Sync(syncName.mc .. " " .. UnitName("player"))
-	else
-		local _, _, player = string.find(msg, L["trigger_mcOther1"])
-		if player then
-			self:Sync(syncName.mc .. " " .. player)
-		end
-		local _, _, player = string.find(msg, L["trigger_mcOther2"])
-		if player then
-			self:Sync(syncName.mc .. " " .. player)
-		end
+-- Overbearing Rage: a player turned against the raid
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
 	end
 end
 
-function module:FadesEvent(msg)
-	if msg == L["trigger_frenzyFade"] then
+function module:FrenzyFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.frenzyFade)
 	end
-	
-	local _, _, player = string.find(msg, L["trigger_mcFade"])
-	if player then
-		player = player == "you" and UnitName("player") or player
-		self:Sync(syncName.mcFade .. " " .. player)
+end
+
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
 	end
 end
 
-function module:OnFriendlyDeath(msg)
-	local _, _, player = string.find(msg, L["trigger_death"])
-	if player then
-		self:OverbearingRageFade(player)
-		self:Sync(syncName.mcFade .. " " .. player)
-	end
-end
-
-function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
-	if spell == spellId.shadowFlame and action == "START" then
-		self:Sync(syncName.shadowFlameCast)
-		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
-		return
+-- a raid member dying clears their Overbearing Rage
+function module:UnitDied(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:OverbearingRageFade(ev.destName)
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
 	end
 end
 

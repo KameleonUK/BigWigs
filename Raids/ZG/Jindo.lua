@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Jin'do the Hexxer", "Zul'Gurub")
 
 module.revision = 30077
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "curse", "hex", "brainwash", "healingward", "autotarget", "bosskill" }
 module.defaultDB = {
@@ -34,26 +35,17 @@ L:RegisterTranslations("enUS", function()
 
 		trigger_engage = "Welcome to the great show, friends. Step right up to die!", --CHAT_MSG_MONSTER_YELL
 
-		trigger_hexYou = "You are afflicted by Hex.", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
-		trigger_hexOther = "(.+) is afflicted by Hex.", --CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-		trigger_hexFade = "Hex fades from (.+).", ----CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 		bar_hex = " Hexxed",
 		msg_hex = " is Hexxed - Dispel!",
 
-		trigger_curseYou = "You are afflicted by Delusions of Jin'do.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 		msg_curseYou = "You are cursed! Kill the Shades!",
-		trigger_curseOther = "(.+) is afflicted by Delusions of Jin'do.", --CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 		bar_curse = " Cursed",
-		trigger_curseFade = "Delusions of Jin'do fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 
-		trigger_curseDispel = "Delusions of Jin'do is removed.", --CHAT_MSG_SPELL_BREAK_AURA
 		msg_curseDispel = "Delusions of Jin'do was decursed!",
 
-		trigger_brainWash = "Jin'do the Hexxer casts Summon Brain Wash Totem.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		msg_brainWash = "Brain Wash Totem!",
 		--trigger_brainWashDeath = "Brain Wash Totem is destroyed.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 
-		trigger_healingWard = "Jin'do the Hexxer casts Powerful Healing Ward.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 		msg_healingWard = "Healing Totem!",
 		--trigger_healingWardDeath = "Powerful Healing Ward is destroyed.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	}
@@ -88,26 +80,17 @@ L:RegisterTranslations("zhCN", function() return {
 	
 	trigger_engage = "朋友，欢迎参加这场盛宴。来吧，狂欢至死吧！",--CHAT_MSG_MONSTER_YELL
 	
-	trigger_hexYou = "你受到了妖术效果的影响。",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
-	trigger_hexOther = "(.+)受到了妖术效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_hexFade = "妖术效果从(.+)身上消失了。",----CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_hex = " 妖术",
     msg_hex = " 被妖术 - 驱散！",
 	
-	trigger_curseYou = "你受到了金度的欺骗效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     msg_curseYou = "你被诅咒了！转火影子！",
-	trigger_curseOther = "(.+)受到了金度的欺骗效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     bar_curse = " 被诅咒",
-	trigger_curseFade = "金度的欺骗效果从(.+)身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	
-	trigger_curseDispel = "金度的欺骗被移除了。",--CHAT_MSG_SPELL_BREAK_AURA
     msg_curseDispel = "金度的欺骗被驱散了！",
 	
-	trigger_brainWash = "妖术师金度施放了召唤洗脑图腾。",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     msg_brainWash = "快打洗脑图腾！",
 	--trigger_brainWashDeath = "Brain Wash Totem is destroyed.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 	
-	trigger_healingWard = "妖术师金度施放了强力治疗结界。",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     msg_healingWard = "快打治疗图腾！",
 	--trigger_healingWardDeath = "Powerful Healing Ward is destroyed.",--CHAT_MSG_COMBAT_HOSTILE_DEATH
 } end )
@@ -138,19 +121,17 @@ local syncName = {
 module:RegisterYellEngage(L["trigger_engage"])
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event")--summon totems
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Hex", "HexEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Hex", "HexFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Delusions of Jin'do", "CurseEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Delusions of Jin'do", "CurseFadeEvent")
+	self:RegisterCombatLog("SPELL_DISPEL", nil, "DispelEvent")
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", "Summon Brain Wash Totem", "BrainWashEvent")
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", "Powerful Healing Ward", "HealingWardEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--hexYou
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--hexFade, curseFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--hexFade, curseFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--hexFade, curseFade
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--curseYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--curseOther, hexOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--curseOther, hexOther
 
-	self:RegisterEvent("CHAT_MSG_SPELL_BREAK_AURA", "Event")--curseDispel
 
 
 	self:ThrottleSync(3, syncName.hex)
@@ -171,37 +152,46 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_hexYou"] then
-		self:Sync(syncName.hex .. " " .. UnitName("Player"))
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:HexEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.hex .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_hexOther"]) then
-		local _, _, hexPlayer = string.find(msg, L["trigger_hexOther"])
-		self:Sync(syncName.hex .. " " .. hexPlayer)
+function module:HexFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.hexFade .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_hexFade"]) then
-		local _, _, hexFadePlayer = string.find(msg, L["trigger_hexFade"])
-		self:Sync(syncName.hexFade .. " " .. hexFadePlayer)
+function module:CurseEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.curse .. " " .. ev.destName)
+	end
+end
 
+function module:CurseFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.curseFade .. " " .. ev.destName)
+	end
+end
 
-	elseif msg == L["trigger_curseYou"] then
-		self:Sync(syncName.curse .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_curseOther"]) then
-		local _, _, cursedPlayer = string.find(msg, L["trigger_curseOther"])
-		self:Sync(syncName.curse .. " " .. cursedPlayer)
-
-	elseif string.find(msg, L["trigger_curseFade"]) then
-		local _, _, curseFadePlayer = string.find(msg, L["trigger_curseFade"])
-		self:Sync(syncName.curseFade .. " " .. curseFadePlayer)
-
-	elseif string.find(msg, L["trigger_curseDispel"]) then
+-- a curse removed from a raid member
+function module:DispelEvent(ev)
+	if ev.extraSpellName == "Delusions of Jin'do" then
 		self:Sync(syncName.curseDispel)
+	end
+end
 
-
-	elseif msg == L["trigger_brainWash"] then
+function module:BrainWashEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.brainWash)
-	elseif msg == L["trigger_healingWard"] then
+	end
+end
+
+function module:HealingWardEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.healingWard)
 	end
 end

@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Anubisath Warder", "Ahn'Qiraj")
 
 module.revision = 30075
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"fear", "silence", "roots", "dust", "warnings"}
 module.trashMod = true
@@ -30,19 +31,15 @@ L:RegisterTranslations("enUS", function() return {
 	warnings_desc = "Warnings for what the 2nd Ability will be.",
 
 	
-	trigger_fear = "Anubisath Warder begins to cast Fear.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_fearCast = "Fear!",
 	bar_fearCd = "Fear CD",
 
-	trigger_silence = "Anubisath Warder begins to cast Silence.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_silenceCast = "Silence!",
 	bar_silenceCd = "Silence CD",
 
-	trigger_roots = "Anubisath Warder begins to cast Entangling Roots.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_rootsCast = "Roots!",
 	bar_rootsCd = "Roots CD",
 
-	trigger_dust = "Anubisath Warder begins to perform Dust Cloud.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_dustCast = "Dust Cloud!",
 	bar_dustCd = "Dust Cloud CD",
 	
@@ -79,19 +76,15 @@ L:RegisterTranslations("zhCN", function() return {
     warnings_desc = "警告第二技能可能为何。",
 
 	
-    trigger_fear = "Anubisath Warder begins to cast Fear.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_fearCast = "恐惧！",
     bar_fearCd = "恐惧 CD",
 
-    trigger_silence = "Anubisath Warder begins to cast Silence.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_silenceCast = "沉默！",
     bar_silenceCd = "沉默 CD",
 
-    trigger_roots = "Anubisath Warder begins to cast Entangling Roots.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_rootsCast = "缠绕根须！",
     bar_rootsCd = "缠绕根须 CD",
 
-    trigger_dust = "Anubisath Warder begins to perform Dust Cloud.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_dustCast = "尘雾之云！",
     bar_dustCd = "尘雾之云 CD",
     
@@ -137,7 +130,10 @@ local firstAbilityFound = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
+	self:RegisterCombatLog("SPELL_CAST_START", "Fear", "FearEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Silence", "SilenceEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Entangling Roots", "RootsEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Dust Cloud", "DustCloudEvent")
 
 	self:ThrottleSync(3, syncName.fear)
 	self:ThrottleSync(3, syncName.silence)
@@ -155,17 +151,27 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_fear"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:FearEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.fear)
-	
-	elseif msg == L["trigger_silence"] then
+	end
+end
+
+function module:SilenceEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.silence)
-	
-	elseif msg == L["trigger_roots"] then
+	end
+end
+
+function module:RootsEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.roots)
-	
-	elseif msg == L["trigger_dust"] then
+	end
+end
+
+function module:DustCloudEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.dust)
 	end
 end

@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Majordomo Executus", "Molten Core")
 
 module.revision = 30075
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "magicreflect", "physicalreflect", "adds", "firepit", "bosskill" }
 module.wipemobs = { "Flamewaker Elite", "Flamewaker Healer" }
@@ -33,20 +34,15 @@ L:RegisterTranslations("enUS", function()
 
 		bar_reflectCd = "Reflection CD",
 
-		trigger_magicReflect = "gains Magic Reflection.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS"
-		trigger_magicReflectFade = "Magic Reflection fades", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_magicReflect = "Magic Reflection",
 		msg_magicReflect = "Magic Reflection - Stop Casting!",
 
-		trigger_physicalReflect = "gains Damage Shield.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-		trigger_physicalReflectFade = "Damage Shield fades", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_physicalReflect = "Physical Reflection",
 		msg_physicalReflect = "Physical Reflection - Stop Attacking!",
 
 		msg_eliteDead = "/4 Flamewaker Elite Dead",
 		msg_healerDead = "/4 Flamewaker Healer Dead",
 
-		trigger_firePitYou = "You suffer (.+) points of fire damage.", --CHAT_MSG_COMBAT_SELF_HITS
 	}
 end)
 
@@ -85,11 +81,14 @@ function module:OnEnable()
 
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_engage, trigger_bossDeath
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_magicReflect, trigger_physicalReflect
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {20619, "Magic Reflection"}, "MagicReflectEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {20619, "Magic Reflection"}, "MagicReflectFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {21075, "Damage Shield"}, "PhysicalReflectEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {21075, "Damage Shield"}, "PhysicalReflectFadeEvent")
+	self:RegisterCombatLog("ENVIRONMENTAL_DAMAGE", nil, "FirePitEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_magicReflectFade, trigger_physicalReflectFade
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS", "Event") --trigger_firePitYou
 
 
 	self:ThrottleSync(2, syncName.physicalReflect)
@@ -105,7 +104,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --eliteDead, healerDead
 end
 
 function module:OnEngage()
@@ -120,16 +118,14 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Flamewaker Elite")) then
+-- UNIT_DIED: the Flamewaker counters
+function module:UnitDied(ev)
+	if ev.destName == "Flamewaker Elite" then
 		eliteDead = eliteDead + 1
 		if eliteDead <= 4 then
 			self:Sync(syncName.eliteDead .. " " .. eliteDead)
 		end
-
-	elseif (msg == string.format(UNITDIESOTHER, "Flamewaker Healer")) then
+	elseif ev.destName == "Flamewaker Healer" then
 		healerDead = healerDead + 1
 		if healerDead <= 4 then
 			self:Sync(syncName.healerDead .. " " .. healerDead)
@@ -145,18 +141,27 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_magicReflect"]) then
-		self:Sync(syncName.magicReflect)
-	elseif string.find(msg, L["trigger_magicReflectFade"]) then
-		self:Sync(syncName.magicReflectFade)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+-- the reflection shields go up on the Flamewakers, not Majordomo, so any unit counts
+function module:MagicReflectEvent(ev)
+	self:Sync(syncName.magicReflect)
+end
 
-	elseif string.find(msg, L["trigger_physicalReflect"]) then
-		self:Sync(syncName.physicalReflect)
-	elseif string.find(msg, L["trigger_physicalReflectFade"]) then
-		self:Sync(syncName.physicalReflectFade)
+function module:MagicReflectFadeEvent(ev)
+	self:Sync(syncName.magicReflectFade)
+end
 
-	elseif string.find(msg, L["trigger_firePitYou"]) and self.db.profile.firepit then
+function module:PhysicalReflectEvent(ev)
+	self:Sync(syncName.physicalReflect)
+end
+
+function module:PhysicalReflectFadeEvent(ev)
+	self:Sync(syncName.physicalReflectFade)
+end
+
+-- standing in a fire pit: environmental fire damage on you
+function module:FirePitEvent(ev)
+	if ev.environmentalType == "FIRE" and ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.firepit then
 		self:FirePit()
 	end
 end

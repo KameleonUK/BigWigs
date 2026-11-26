@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Hazza'rah", "Zul'Gurub")
 
 module.revision = 30063
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"adds", "sleep", "chainburn", "bosskill"}
 
@@ -21,18 +22,15 @@ L:RegisterTranslations("enUS", function() return {
 	chainburn_desc = "Warns for Chain Burn.",
 	
 	
-	trigger_addsSpawn = "Hazza'rah casts Summon Nightmare Illusions.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 	bar_adds = "Adds Spawn",
 	bar_addsCounter = "Adds Dead",
 	msg_addsSpawn = "3 Nightmare Illusions - Ranged, Kill the Adds! ",
 	
-	trigger_sleep = "afflicted by Sleep", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_sleepCd = "Sleep CD",
 	bar_sleepAfflic = "Sleeping!",
 	msg_sleep = "Sleep - Tremor Totem!",
 	
 		--did not see, wild guessing
-	trigger_chainBurn = "Chain Burn hit", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_chainBurn = "AoE Mana Burn CD",
 	msg_chainBurn = "AoE Mana Burn - Drain his Mana!",
 } end )
@@ -56,18 +54,15 @@ L:RegisterTranslations("zhCN", function() return {
     chainburn_desc = "法力燃烧链效果出现时进行警告",
 
 
-    trigger_addsSpawn = "Hazza'rah casts Summon Nightmare Illusions.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     bar_adds = "增援出现",
     bar_addsCounter = "增援死亡",
     msg_addsSpawn = "3个梦魇幻象 - 远程，击杀增援！",
 
-    trigger_sleep = "afflicted by Sleep", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     bar_sleepCd = "沉睡 冷却",
     bar_sleepAfflic = "沉睡中！",
     msg_sleep = "沉睡 - 施放战栗图腾！",
 
     --did not see, wild guessing
-    trigger_chainBurn = "Chain Burn hit", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_chainBurn = "AoE法力燃烧 CD",
     msg_chainBurn = "AoE法力燃烧 - 抽干他的法力！",
     c_nightmareillusion = "梦魇幻象",
@@ -112,15 +107,12 @@ local addDeadCounter = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event") --trigger_addsSpawn
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", "Summon Nightmare Illusions", "AddsSpawnEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Sleep", "SleepEvent")
+	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_MISSED"}, "Chain Burn", "ChainBurnEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_sleep
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_sleep
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_sleep
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_chainBurn
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_chainBurn
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_chainBurn
 
 
 	self:ThrottleSync(5, syncName.addsSpawn)
@@ -130,7 +122,6 @@ function module:OnEnable()
 end
 
 function module:OnSetup()
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --addsDead 
 	
 	self.started = nil
 end
@@ -151,22 +142,28 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-	
-	if (msg == string.format(UNITDIESOTHER, "Nightmare Illusion")) and self.db.profile.adds then
+-- UNIT_DIED: the Nightmare Illusions (Hazza'rah's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Nightmare Illusion" and self.db.profile.adds then
 		self:OneAddDead()
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_addsSpawn"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:AddsSpawnEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.addsSpawn)
-	
-	elseif string.find(msg, L["trigger_sleep"]) then
+	end
+end
+
+function module:SleepEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.sleep)
-	
-	elseif string.find(msg, L["trigger_chainBurn"]) then
+	end
+end
+
+function module:ChainBurnEvent(ev)
+	if true then
 		self:Sync(syncName.chainBurn)
 	end
 end

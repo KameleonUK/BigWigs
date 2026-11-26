@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Moroes", "Karazhan")
 
 module.revision = 30027
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"smokebomb", "reflect", "shufflekick", "curse", "dust", "bosskill"}
 module.zonename = {
@@ -41,27 +42,15 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_p2 = "It is my duty to protect and watch over this tower, as approved by my master. I shall make sure to endulge in your little spectacle. Why don't we put on a show for those in attendance, hmm? Legalbrow, if you would please, play my theme.",--CHAT_MSG_MONSTER_YELL
 	bar_p2 = "Moroes Phase 2",
 	
-	trigger_smokeBombYou = "You are afflicted by Smoke Bomb.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_smokeBombOther = "(.+) is afflicted by Smoke Bomb.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_smokeBombFade = "Smoke Bomb fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_smokeBomb = "Players Smoke Bombed",
 	
-	trigger_reflect = "Moroes gains Reflection.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_reflectFade = "Reflection fades from Moroes.",--CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_reflect = "Spell Reflect!",
 	msg_reflect = "Spell Reflect!",
 	
-	trigger_shuffleKickYou = "You are afflicted by Shuffle Kick.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_shuffleKick = "(.+) is afflicted by Shuffle Kick.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_shuffleKickFade = "Shuffle Kick fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_shuffleKick = " Kicked",
 	
-	trigger_curse = "afflicted by Moroes Curse.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	msg_curse = "Moroes Curse, Decurse!",
 	
-	trigger_dustYou = "You are afflicted by Glittering Dust.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_dust = "(.+) is afflicted by Glittering Dust.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_dustFade = "Glittering Dust fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_dust = " Dusted",
 	bar_dust_cd = "Tank Stun (use fap soon)",
 	
@@ -103,27 +92,15 @@ L:RegisterTranslations("zhCN", function() return {
     trigger_p2 = "It is my duty to protect and watch over this tower, as approved by my master. I shall make sure to endulge in your little spectacle. Why don't we put on a show for those in attendance, hmm? Legalbrow, if you would please, play my theme.",--CHAT_MSG_MONSTER_YELL
     bar_p2 = "莫罗斯阶段2",
     
-    trigger_smokeBombYou = "You are afflicted by Smoke Bomb.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_smokeBombOther = "(.+) is afflicted by Smoke Bomb.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-    trigger_smokeBombFade = "Smoke Bomb fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_smokeBomb = "玩家中了烟雾弹",
     
-    trigger_reflect = "Moroes gains Reflection.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_reflectFade = "Reflection fades from Moroes.",--CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_reflect = "法术反射！",
     msg_reflect = "法术反射！",
     
-    trigger_shuffleKickYou = "You are afflicted by Shuffle Kick.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_shuffleKick = "(.+) is afflicted by Shuffle Kick.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-    trigger_shuffleKickFade = "Shuffle Kick fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_shuffleKick = " 被踢",
     
-    trigger_curse = "afflicted by Moroes Curse.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     msg_curse = "莫罗斯的诅咒，快驱散！",
     
-    trigger_dustYou = "You are afflicted by Glittering Dust.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_dust = "(.+) is afflicted by Glittering Dust.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-    trigger_dustFade = "Glittering Dust fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_dust = " 中了闪光尘",
     
     trigger_yellSmt = "Most impressive, it would appear your skills do match your bravery.",-- CHAT_MSG_MONSTER_YELL
@@ -175,15 +152,16 @@ local bwMoroesPhase = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	bwMoroesPhase = nil
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_smokeBombYou, trigger_agonizingConcussionYou, trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_smokeBombOther, trigger_agonizingConcussion, trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_smokeBombOther, trigger_agonizingConcussion, trigger_curse
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Smoke Bomb", "SmokeBombEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Reflection", "ReflectionEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Reflection", "ReflectionFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Shuffle Kick", "ShuffleKickEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Shuffle Kick", "ShuffleKickFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Moroes Curse", "CurseEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Glittering Dust", "DustEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Glittering Dust", "DustFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_smokeBombFade, trigger_reflectFade, trigger_agonizingConcussionFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_smokeBombFade, trigger_agonizingConcussionFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_smokeBombFade, trigger_agonizingConcussionFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_reflect
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_p1, trigger_p2
 	
@@ -227,47 +205,52 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_smokeBombYou"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:SmokeBombEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.smokeBomb2)
-	
-	elseif string.find(msg, L["trigger_smokeBombOther"]) then
-		self:Sync(syncName.smokeBomb2)
+	end
+end
 
-	elseif msg == L["trigger_reflect"] then
+function module:ReflectionEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.reflect)
-	elseif msg == L["trigger_reflectFade"] then
-		self:Sync(syncName.reflectFade)
+	end
+end
 
-	elseif msg == L["trigger_shuffleKickYou"] then
-		self:Sync(syncName.shuffleKick .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_shuffleKick"]) then
-		local _,_, shuffleKickPlayer, _ = string.find(msg, L["trigger_shuffleKick"])
-		self:Sync(syncName.shuffleKick .. " " .. shuffleKickPlayer)
-		
-	elseif string.find(msg, L["trigger_shuffleKickFade"]) then
-		local _,_, shuffleKickFadePlayer, _ = string.find(msg, L["trigger_shuffleKickFade"])
-		if shuffleKickFadePlayer == "you" then shuffleKickFadePlayer = UnitName("Player") end
-		self:Sync(syncName.shuffleKickFade .. " " .. shuffleKickFadePlayer)
-		
-		
-	elseif string.find(msg, L["trigger_curse"]) then
+function module:ReflectionFadeEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.reflectFade)
+	end
+end
+
+function module:ShuffleKickEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.shuffleKick .. " " .. ev.destName)
+	end
+end
+
+function module:ShuffleKickFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.shuffleKickFade .. " " .. ev.destName)
+	end
+end
+
+function module:CurseEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.curse)
-		
-		
-	elseif msg == L["trigger_dustYou"] then
-		self:Sync(syncName.dust .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_dust"]) then
-		local _,_, dustPlayer, _ = string.find(msg, L["trigger_dust"])
-		self:Sync(syncName.dust .. " " .. dustPlayer)
-		
-	elseif string.find(msg, L["trigger_dustFade"]) then
-		local _,_, dustFadePlayer, _ = string.find(msg, L["trigger_dustFade"])
-		if dustFadePlayer == "you" then dustFadePlayer = UnitName("Player") end
-		self:Sync(syncName.dustFade .. " " .. dustFadePlayer)
-		
+	end
+end
+
+function module:DustEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.dust .. " " .. ev.destName)
+	end
+end
+
+function module:DustFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.dustFade .. " " .. ev.destName)
 	end
 end
 

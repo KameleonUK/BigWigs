@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Clawlord Howlfang", "Karazhan")
 
 module.revision = 30037
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"terrifyingpresence", "curse", "enrage", "bosskill"}
 module.zonename = {
@@ -26,11 +27,9 @@ L:RegisterTranslations("enUS", function() return {
 	
 	
 	
-	trigger_terrifyingPresenceSelf = "You are afflicted by Terrifying Presence %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	--trigger_terrifyingPresence = "(.+) is afflicted by Terrifying Presence %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	bar_terrifyingPresence = "% reduced",
 	
-	trigger_curse = "afflicted by Shadowbane Curse.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	msg_curse = "Shadowbane Curse, Decurse!",
 	
 	trigger_yellEnrage = "My pack shall tear you apart, bone by bone!",--CHAT_MSG_MONSTER_YELL
@@ -59,11 +58,9 @@ L:RegisterTranslations("zhCN", function() return {
     
 
 
-    trigger_terrifyingPresenceSelf = "You are afflicted by Terrifying Presence %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     --trigger_terrifyingPresence = "(.+) is afflicted by Terrifying Presence %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     bar_terrifyingPresence = "% 减益效果",
     
-    trigger_curse = "afflicted by Shadowbane Curse.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     msg_curse = "影刃诅咒，快驱散！",
     
     trigger_yellEnrage = "My pack shall tear you apart, bone by bone!",--CHAT_MSG_MONSTER_YELL
@@ -93,9 +90,8 @@ local syncName = {
 
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_terrifyingPresenceSelf, trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_terrifyingPresence, trigger_curse
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_terrifyingPresence, trigger_curse
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", "Terrifying Presence", "TerrifyingPresenceEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Shadowbane Curse", "CurseEvent")
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_engage, trigger_yellEnrage
 	
@@ -123,19 +119,19 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_terrifyingPresenceSelf"]) then
-		local _,_, tpQty, _ = string.find(msg, L["trigger_terrifyingPresenceSelf"])
-		if UnitName("target") ~= nil and UnitName("targettarget") ~= nil then
-			if UnitName("target") == "Clawlord Howlfang" and UnitName("targettarget") == UnitName("Player") then
-				local tpPlayerAndQty = UnitName("Player") .. " " .. tpQty
-				self:Sync(syncName.terrifyingPresence2 .. " " .. tpPlayerAndQty)
-			end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+-- Terrifying Presence stacks on you while Howlfang is on you
+function module:TerrifyingPresenceEvent(ev)
+	if ev.amount and ev.destGUID and ev.destGUID == UnitGUID("player") then
+		if UnitName("target") == self.translatedName and UnitName("targettarget") == UnitName("Player") then
+			self:Sync(syncName.terrifyingPresence2 .. " " .. UnitName("Player") .. " " .. ev.amount)
 		end
-		
-	elseif string.find(msg, L["trigger_curse"]) then
-		self:Sync(syncName.curse)
+	end
+end
 
+function module:CurseEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.curse)
 	end
 end
 

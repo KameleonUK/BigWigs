@@ -2,13 +2,13 @@
 local module, L = BigWigs:ModuleDeclaration("Flesh Hunter", "Ruins of Ahn'Qiraj")
 
 module.revision = 20041
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {}
 module.trashMod = true
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "FleshHunter",
-	consumeother_trigger = "(.*) is afflicted by Consume",
 	consume_bar = " Consumed!",
 } end )
 
@@ -21,7 +21,6 @@ L:RegisterTranslations("zhCN", function() return {
 	-- Wind汉化修复Turtle-WOW中文数据
 	-- Last update: 2024-06-22
 	cmd = "FleshHunter",
-	consumeother_trigger = "(.*)受到了吞噬效果的影响。",
 	consume_bar = " 被吞噬!",
 	clickme = " >点击我！<",
 } end )
@@ -38,9 +37,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Consume", "ConsumeEvent")
 	self:ThrottleSync(1, syncName.consume)
 end
 
@@ -65,9 +62,9 @@ function module:BigWigs_RecvSync(sync, rest, nick)
 	end
 end
 
-function module:Event(msg)
-	local _,_,consumeother, mcverb = string.find(msg, L["consumeother_trigger"])
-	if consumeother then
-		self:Sync(syncName.consume .. " " .. consumeother)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ConsumeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.consume .. " " .. ev.destName)
 	end
 end

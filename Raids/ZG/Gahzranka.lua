@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Gahz'ranka", "Zul'Gurub")
 
 module.revision = 30025
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"frostbreath", "geyser", "slam", "bosskill"}
 
@@ -20,20 +21,15 @@ L:RegisterTranslations("enUS", function() return {
 	slam_name = "Slam alert",
 	slam_desc = "Warn when the boss is casting Slam.",
 	
-	trigger_frostbreathCast = "Gahz'ranka begins to perform Frost Breath.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_frostbreathCast = "FrostBreath Dmg+ManaBurn",
 	msg_frostbreathCast = "Frost Breath, Damage + Mana Burn",
 	bar_frostbreathCd = "Frost Breath CD",
-	trigger_frostbreathYou = "Frost Breath hits you",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	msg_frostBreathYou = "You got Mana Burned by Frost Breath!",
 	
-	trigger_geyserBegin = "Gahz'ranka begins to cast Massive Geyser.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_geyserCast = "knockUP - Aggro Drop",
 	msg_geyserCast = "knockUP - Aggro Drop",
-	trigger_geyserCast = "Gahz'ranka casts Massive Geyser.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_geyserCd = "knockUP AggroDrop CD",
 	
-	trigger_slam = "Gahz'ranka Slam",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_slam = "knockBACK - CD",
 } end )
 
@@ -89,20 +85,15 @@ L:RegisterTranslations("zhCN", function() return {
     slam_name = "猛击警报",
     slam_desc = "当Boss施放猛击时进行警告",
 
-    trigger_frostbreathCast = "Gahz'ranka begins to perform Frost Breath.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_frostbreathCast = "冰霜吐息伤害+法力燃烧",
     msg_frostbreathCast = "冰霜吐息，伤害 + 法力燃烧",
     bar_frostbreathCd = "冰霜吐息冷却",
-    trigger_frostbreathYou = "Frost Breath hits you",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
     msg_frostBreathYou = "你被冰霜吐息法力燃烧了！",
 
-    trigger_geyserBegin = "Gahz'ranka begins to cast Massive Geyser.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_geyserCast = "击飞 - 仇恨减少",
     msg_geyserCast = "击飞 - 仇恨减少",
-    trigger_geyserCast = "Gahz'ranka casts Massive Geyser.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_geyserCd = "击飞仇恨减少冷却",
 
-    trigger_slam = "Gahz'ranka Slam",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_slam = "击退 -冷却",
 } end )
 local timer = {
@@ -132,10 +123,11 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SAY", "Event")--debug
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--trigger_slam, trigger_frostbreath, trigger_geyserBegin, trigger_geyserCast, trigger_frostbreathYou
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_slam, trigger_frostbreath, trigger_geyserBegin, trigger_geyserCast
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_slam, trigger_frostbreath, trigger_geyserBegin, trigger_geyserCast
+	self:RegisterCombatLog("SPELL_CAST_START", "Frost Breath", "FrostBreathEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Frost Breath", "FrostBreathHitEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Massive Geyser", "GeyserBeginEvent")
+	self:RegisterCombatLog("SPELL_CAST_SUCCESS", "Massive Geyser", "GeyserCastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Gahz'ranka Slam", "SlamEvent")
 	
 	--self:RegisterEvent("PLAYER_REGEN_DISABLED", "CheckForEngage")
 end
@@ -147,34 +139,37 @@ function module:OnSetup()
 	self:ThrottleSync(4, syncName.slam)
 end
 
-function module:Event(msg)
-	if msg == L["trigger_frostbreathCast"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local frostBreathClasses = { PRIEST = true, MAGE = true, WARLOCK = true }
+
+function module:FrostBreathEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.frostbreath)
-	
-	
-	elseif string.find(msg, L["trigger_frostbreathYou"]) then
-		if BigWigs:PlayerClass() == "PRIEST" then
-			self:WarningSign(icon.frostbreath, 0.7)
-			self:Sound("Info")
-			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
-		elseif BigWigs:PlayerClass() == "MAGE" then
-			self:WarningSign(icon.frostbreath, 0.7)
-			self:Sound("Info")
-			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
-		elseif BigWigs:PlayerClass() == "WARLOCK" then
-			self:WarningSign(icon.frostbreath, 0.7)
-			self:Sound("Info")
-			self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
-		end
-		
-		
-	elseif msg == L["trigger_geyserBegin"] then
+	end
+end
+
+function module:FrostBreathHitEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destGUID and ev.destGUID == UnitGUID("player") and frostBreathClasses[BigWigs:PlayerClass()] then
+		self:WarningSign(icon.frostbreath, 0.7)
+		self:Sound("Info")
+		self:Message(L["msg_frostBreathYou"], "Attention", false, nil, false)
+	end
+end
+
+function module:GeyserBeginEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.geyserBegin)
-	elseif msg == L["trigger_geyserCast"] then
+	end
+end
+
+function module:GeyserCastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.geyserCast)
-	
-	
-	elseif string.find(msg, L["trigger_slam"]) then
+	end
+end
+
+function module:SlamEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.slam)
 	end
 end

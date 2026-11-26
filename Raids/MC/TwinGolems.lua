@@ -2,6 +2,7 @@ local module, L = BigWigs:ModuleDeclaration("Twin Golems", "Molten Core")
 
 -- module variables
 module.revision = 30000
+module.combatLog = true -- triggers from the combat log; the kill is both golems dying (UNIT_DIED)
 module.enabletrigger = { "Smoldaris", "Basalthar" }
 module.toggleoptions = { "bulwark", "bosskill" }
 
@@ -19,8 +20,6 @@ L:RegisterTranslations("enUS", function()
 		bulwark_name = "Molten Bulwark Alert",
 		bulwark_desc = "Timer bar and target switch alert for Molten Bulwark (-95% damage taken, fire thorns)",
 
-		trigger_bulwarkGain = "(.+) gains Molten Bulwark",
-		trigger_bulwarkFade = "Molten Bulwark fades from (.+)%.",
 		msg_switch = "SWITCH to %s",
 		bar_bulwark = "%s Bulwark",
 	}
@@ -34,8 +33,6 @@ L:RegisterTranslations("zhCN", function()
 		bulwark_name = "熔火壁垒警报",
 		bulwark_desc = "为熔火壁垒提供计时条和切换目标提示",
 
-		trigger_bulwarkGain = "(.+)获得了熔火壁垒的效果",
-		trigger_bulwarkFade = "熔火壁垒效果从(.+)身上消失。",
 		msg_switch = "切换攻击 %s",
 		bar_bulwark = "%s 壁垒",
 	}
@@ -60,8 +57,9 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Molten Bulwark", "BulwarkEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Molten Bulwark", "BulwarkFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
 	self:ThrottleSync(4, syncName.bulwarkGain)
 	self:ThrottleSync(4, syncName.bulwarkFade)
@@ -71,25 +69,36 @@ function module:OnSetup()
 	self.started = nil
 end
 
+local golemsDead = {}
+
 function module:OnEngage()
+	golemsDead = {}
 end
 
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
-	-- Bulwark gain
-	local _, _, mob = string.find(msg, L["trigger_bulwarkGain"])
-	if mob then
-		self:Sync(syncName.bulwarkGain .. " " .. mob)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+local golems = { Smoldaris = true, Basalthar = true }
+
+function module:BulwarkEvent(ev)
+	if ev.destName and golems[ev.destName] then
+		self:Sync(syncName.bulwarkGain .. " " .. ev.destName)
 	end
 end
 
-function module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
-	-- Bulwark fade
-	local _, _, mob = string.find(msg, L["trigger_bulwarkFade"])
-	if mob then
-		self:Sync(syncName.bulwarkFade .. " " .. mob)
+function module:BulwarkFadeEvent(ev)
+	if ev.destName and golems[ev.destName] then
+		self:Sync(syncName.bulwarkFade .. " " .. ev.destName)
+	end
+end
+
+function module:UnitDied(ev)
+	if ev.destName and golems[ev.destName] then
+		golemsDead[ev.destName] = true
+		if golemsDead.Smoldaris and golemsDead.Basalthar then
+			self:SendBossDeathSync()
+		end
 	end
 end
 
@@ -127,57 +136,57 @@ function module:Test()
 		{ time = 0.252, func = function()
 			local msg = "Basalthar gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 15.259, func = function()
 			local msg = "Molten Bulwark fades from Basalthar."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 16.720, func = function()
 			local msg = "Smoldaris gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 31.649, func = function()
 			local msg = "Molten Bulwark fades from Smoldaris."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 35.733, func = function()
 			local msg = "Basalthar gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 50.587, func = function()
 			local msg = "Molten Bulwark fades from Basalthar."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 52.371, func = function()
 			local msg = "Smoldaris gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 67.290, func = function()
 			local msg = "Molten Bulwark fades from Smoldaris."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 71.250, func = function()
 			local msg = "Basalthar gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 86.199, func = function()
 			local msg = "Molten Bulwark fades from Basalthar."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_AURA_GONE_OTHER(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 87.832, func = function()
 			local msg = "Smoldaris gains Molten Bulwark."
 			print("Test: " .. msg)
-			module:CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS(msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		
 		-- End of Test

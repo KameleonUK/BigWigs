@@ -1247,11 +1247,125 @@ do
 	end)
 end
 
+-- For module Test() functions written as English chat lines: turns one line into the combat log event
+-- it stands for and runs it through the dispatcher, so old test scripts drive converted modules.
+-- Returns nil for a line it doesn't recognise (yells, emotes). "You"/"you" is the player.
+local testLinePatterns = {
+	{ "^(.-) is afflicted by (.-) %((%d+)%)%.?$", "SPELL_AURA_APPLIED_DOSE", "dest", "spell", "amount" },
+	{ "^(.-) are afflicted by (.-) %((%d+)%)%.?$", "SPELL_AURA_APPLIED_DOSE", "dest", "spell", "amount" },
+	{ "^(.-) is afflicted by (.-)%.?$", "SPELL_AURA_APPLIED", "dest", "spell" },
+	{ "^(.-) are afflicted by (.-)%.?$", "SPELL_AURA_APPLIED", "dest", "spell" },
+	{ "^(.-) fades from (.-)%.?$", "SPELL_AURA_REMOVED", "spell", "dest" },
+	{ "^(.-) gains? (.-) %((%d+)%)%.?$", "SPELL_AURA_APPLIED_DOSE", "self", "spell", "amount" },
+	{ "^(.-) gains? (.-)%.?$", "SPELL_AURA_APPLIED", "self", "spell" },
+	{ "^(.-) begins to cast (.-)%.?$", "SPELL_CAST_START", "source", "spell" },
+	{ "^(.-) begins to perform (.-)%.?$", "SPELL_CAST_START", "source", "spell" },
+	{ "^(.-) performs? (.-) on (.-)%.?$", "SPELL_CAST_SUCCESS", "source", "spell", "dest" },
+	{ "^(.-) performs? (.-)%.?$", "SPELL_CAST_SUCCESS", "source", "spell" },
+	{ "^(.-) casts? (.-) on (.-)%.?$", "SPELL_CAST_SUCCESS", "source", "spell", "dest" },
+	{ "^(.-) casts? (.-)%.?$", "SPELL_CAST_SUCCESS", "source", "spell" },
+	{ "^(.-)'s (.-) [hc]r?i?t?s (.-) for (%d+)", "SPELL_DAMAGE", "source", "spell", "dest", "amount" },
+	{ "^(.-) suffers? (%d+) %a+ damage from (.-)'s (.-)%.", "SPELL_PERIODIC_DAMAGE", "dest", "amount", "source", "spell" },
+	{ "^(.-)'s (.-) was resisted by (.-)%.?$", "SPELL_MISSED", "source", "spell", "dest", "RESIST" },
+	{ "^(.-)'s (.-) was (%a+)ed by (.-)%.?$", "SPELL_MISSED", "source", "spell", "miss", "dest" },
+	{ "^(.-)'s (.-) fails%.", "SPELL_MISSED", "source", "spell", "IMMUNE" },
+	{ "^(.-)'s (.-) was resisted", "SPELL_MISSED", "source", "spell", "RESIST" },
+	{ "^You attack%. (.-) (%a+)%.?$", "SWING_MISSED", "dest", "miss" },
+	{ "^(.-) dies%.?$", "UNIT_DIED", "dest" },
+	{ "^You die%.?$", "UNIT_DIED", "me" },
+}
+function BigWigs:TestCombatLogText(line)
+	local me = UnitName("player")
+	local function Who(name)
+		if name == "You" or name == "you" or name == "Your" then
+			return me
+		end
+		return name
+	end
+	for _, p in ipairs(testLinePatterns) do
+		local c = { string.find(line, p[1]) }
+		if c[1] then
+			local v = { }
+			local miss
+			for i = 3, table.getn(p) do
+				local field, value = p[i], c[i]
+				if field == "RESIST" or field == "IMMUNE" then
+					miss = field
+				elseif field == "miss" then
+					miss = string.upper(value)
+					if miss == "PARRIE" or miss == "PARRIES" then miss = "PARRY" end
+					if miss == "DODG" or miss == "DODGES" then miss = "DODGE" end
+					if miss == "BLOCK" or miss == "BLOCKS" then miss = "BLOCK" end
+				elseif field == "me" then
+					v.dest = me
+				else
+					v[field] = value
+				end
+			end
+			local sub = p[2]
+			local source, dest = Who(v.source), Who(v.dest)
+			if v.self then
+				source, dest = Who(v.self), Who(v.self)
+			end
+			local amount = v.amount and tonumber(v.amount)
+			if sub == "UNIT_DIED" then
+				self:TestCombatLog(sub, nil, dest)
+			elseif sub == "SWING_MISSED" then
+				self:TestCombatLog(sub, me, dest, nil, nil, miss)
+			elseif sub == "SPELL_MISSED" then
+				self:TestCombatLog(sub, source, dest, nil, v.spell, miss)
+			elseif sub == "SPELL_DAMAGE" or sub == "SPELL_PERIODIC_DAMAGE" then
+				self:TestCombatLog(sub, source, dest, nil, v.spell, amount, 0, 1)
+			elseif sub == "SPELL_AURA_APPLIED_DOSE" then
+				self:TestCombatLog(sub, source, dest, nil, v.spell, "DEBUFF", amount)
+			elseif sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REMOVED" then
+				self:TestCombatLog(sub, source, dest, nil, v.spell, "DEBUFF")
+			else
+				self:TestCombatLog(sub, source, dest, nil, v.spell)
+			end
+			return true
+		end
+	end
+end
+
 local function AsList(v)
 	if type(v) == "table" then
 		return v
 	end
 	return { v }
+end
+
+-- For module Test() functions: run a made-up combat log event through the same dispatcher, e.g.
+--   BigWigs:TestCombatLog("SPELL_AURA_APPLIED", "Nefarian", UnitName("player"), 22687, "Veil of Shadow", "DEBUFF")
+-- The values after spellName are the suffix (auraType; amount ...; missType ...). A unit named like a
+-- module's boss, or the source unit, is flagged as a hostile NPC; anyone else as a raid member, with
+-- your own GUID when it is you. Pass spellId/spellName nil for SWING_ and UNIT_ events.
+local testFlagsNPC = 0x0A48 -- outsider, hostile, NPC control, NPC type
+local testFlagsRaid = 0x0514 -- raid, friendly, player control, player type
+function BigWigs:TestCombatLog(subevent, sourceName, destName, spellId, spellName, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+	local me = UnitName("player")
+	local function Unit(name, hostile)
+		if not name then
+			return nil, nil, 0
+		end
+		if name == me then
+			return UnitGUID("player"), name, testFlagsRaid
+		end
+		return "0xTEST" .. name, name, hostile and testFlagsNPC or testFlagsRaid
+	end
+	local sg, sn, sf = Unit(sourceName, sourceName and sourceName ~= me)
+	local dg, dn, df = Unit(destName, destName and destName == sourceName)
+	if spellId or spellName then
+		Fill(GetTime(), subevent, false, sg, sn, sf, 0, dg, dn, df, 0, spellId, spellName, 1, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+	else
+		Fill(GetTime(), subevent, false, sg, sn, sf, 0, dg, dn, df, 0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+	end
+	if combatLogCore[subevent] then
+		CallSafely(combatLogCore[subevent])
+	end
+	if combatLogListeners[subevent] then
+		Dispatch(combatLogListeners[subevent])
+	end
 end
 
 function BigWigs.modulePrototype:RegisterCombatLog(subevents, spells, handler)
@@ -1304,12 +1418,55 @@ end
 
 -- Boss death from UNIT_DIED (O2), in any client language and for units that share a name. Modules
 -- converted to the combat log (module.combatLog) get it in place of the chat death line; other modules
--- get it as well as the chat line, unless they handle CHAT_MSG_COMBAT_HOSTILE_DEATH themselves
--- (e.g. a fight that ends only when several units have died). A module can override BossUnitDied.
+-- get it as well as the chat line, unless they handle CHAT_MSG_COMBAT_HOSTILE_DEATH or
+-- CheckForBossDeath themselves (e.g. a fight that ends only when several units have died, or trash that
+-- ends when none of that name is still fighting). A trash module (module.trashMod) on the combat log
+-- ends only when no other unit of its name is still in combat. A module can override BossUnitDied.
 function BigWigs.modulePrototype:BossUnitDied(ev)
-	if self.combatLog or self.CHAT_MSG_COMBAT_HOSTILE_DEATH == BigWigs.modulePrototype.CHAT_MSG_COMBAT_HOSTILE_DEATH then
-		self:SendBossDeathSync()
+	local proto = BigWigs.modulePrototype
+	if not self.combatLog and (self.CHAT_MSG_COMBAT_HOSTILE_DEATH ~= proto.CHAT_MSG_COMBAT_HOSTILE_DEATH or self.CheckForBossDeath ~= proto.CheckForBossDeath) then
+		return
 	end
+	if self.trashMod and self:IsEnableTriggerInCombat() then
+		return
+	end
+	self:SendBossDeathSync()
+end
+
+-- True when a unit named in enabletrigger is alive and in combat on your target, a raid member's
+-- target or a nameplate (the check trash modules used before declaring their pack dead).
+function BigWigs.modulePrototype:IsEnableTriggerInCombat()
+	local t = self.enabletrigger
+	if not t then
+		return false
+	end
+	if type(t) == "string" then
+		t = { t }
+	end
+	local function Fighting(unit)
+		if UnitExists(unit) and UnitAffectingCombat(unit) and not UnitIsDead(unit) then
+			local name = UnitName(unit)
+			for _, mob in pairs(t) do
+				if name == mob then
+					return true
+				end
+			end
+		end
+	end
+	if Fighting("target") then
+		return true
+	end
+	for i = 1, GetNumRaidMembers() do
+		if Fighting("raid" .. i .. "target") then
+			return true
+		end
+	end
+	for i = 1, 40 do
+		if Fighting("nameplate" .. i) then
+			return true
+		end
+	end
+	return false
 end
 
 combatLogCore["UNIT_DIED"] = function()

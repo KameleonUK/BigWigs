@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Dark Rider Champion", "Karazhan")
 
 module.revision = 30026
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"reaverstorm"}
 module.trashMod = true
@@ -18,7 +19,6 @@ L:RegisterTranslations("enUS", function() return {
 	reaverstorm_desc = "Warn for Reaver Storm",
 
 
-	trigger_reaverstorm = "Dark Rider Champion begins to perform Reaver Storm.",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_reaverstormCd = "Reaver Storm CD",
 	bar_reaverstormCast = "Reaver Storm Cast",
 
@@ -40,7 +40,6 @@ L:RegisterTranslations("zhCN", function() return {
     reaverstorm_desc = "掠夺者风暴施放时进行警告",
 
 
-    trigger_reaverstorm = "Dark Rider Champion begins to perform Reaver Storm.",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_reaverstormCd = "掠夺者风暴冷却",
     bar_reaverstormCast = "掠夺者风暴施放",
 
@@ -62,7 +61,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_reaverstorm
+	self:RegisterCombatLog("SPELL_CAST_START", "Reaver Storm", "ReaverStormEvent")
 	
 	self:ThrottleSync(5, syncName.reaverstorm)
 end
@@ -77,46 +76,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
-	end
-end
-
-function module:Event(msg)
-	if msg == L["trigger_reaverstorm"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ReaverStormEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.reaverstorm)
 	end
 end

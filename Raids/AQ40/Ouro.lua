@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Ouro", "Ahn'Qiraj")
 
 module.revision = 30084
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"sweep", "sandblast", "popcorn", "emerge", "berserk", -1, "targeticon", "bosskill"}
 
@@ -33,19 +34,15 @@ L:RegisterTranslations("enUS", function() return {
 	targeticon_desc = "Put a Skull Raid Icon on Ouro's Target",
 
 
-	trigger_engage = "Ouro begins to cast Birth.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 
-	trigger_sweep = "Ouro begins to cast Sweep.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_sweepCd = "Sweep CD",
 	bar_sweepCast = "Sweep!",
 	msg_sweep = "Casting Sweep!",
 
-	trigger_sandBlast = "Ouro begins to perform Sand Blast.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_sandBlastCd = "Sand Blast CD",
 	bar_sandBlastCast = "Sand Blast!",
 	msg_sandBlast = "Casting Sand Blast!",
 
-	trigger_emerge = "Ground Rupture", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_submergePossible = "Possible Submerge",
 	msg_emerge = "Ouro has Emerged!",
 
@@ -54,13 +51,11 @@ L:RegisterTranslations("enUS", function() return {
 	msg_submerge = "Ouro has Submerged!",
 	msg_collapse = "Ouro Emerges in 10 seconds - Collapse towards the middle!",
 
-	trigger_berserk = "Ouro gains Berserk.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_berserk = "Ouro is Berserk - No Submerges",
 	msg_berserkSoon = "Berserk Soon - Get Ready!",
 
 	bar_berserkPopcorn = "New Popcorn Spawns", --10sec after enrage, should be 1 per 10sec afterwards
 
-	trigger_popcornHitsYou = "Dirt Mound's Quake hits you for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 } end )
 
 
@@ -94,19 +89,15 @@ L:RegisterTranslations("zhCN", function() return {
     targeticon_desc = "在奥罗的目标头上标记骷髅团队标志",
 	
 	
-    trigger_engage = "奥罗开始施放出生。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
     
-    trigger_sweep = "奥罗开始施放横扫。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_sweepCd = "横扫 CD",
     bar_sweepCast = "横扫！",
     msg_sweep = "正在施放横扫！",
     
-    trigger_sandBlast = "奥罗开始施展沙尘爆裂。", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_sandBlastCd = "沙尘爆裂 CD",
     bar_sandBlastCast = "沙尘爆裂！快跑！",
     msg_sandBlast = "正在施放沙尘爆裂！",
 
-    trigger_emerge = "大地破裂", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_submergePossible = "可能下潜",
     msg_emerge = "奥罗已浮现！",
     
@@ -115,13 +106,11 @@ L:RegisterTranslations("zhCN", function() return {
     msg_submerge = "奥罗已下潜！",
     msg_collapse = "10秒后奥罗浮现 - 向中部集合！",
     
-    trigger_berserk = "奥罗获得了狂暴的效果。", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_berserk = "奥罗进入狂暴状态 - 不再下潜",
     msg_berserkSoon = "即将狂暴 - 准备！",
     
     bar_berserkPopcorn = "新的爆裂物出现", --10sec after enrage, should be 1 per 10sec afterwards
 
-    trigger_popcornHitsYou = "土堆的地震击中你", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 } end )
 local timer = {
 	firstSweep = {20.5,25},
@@ -168,11 +157,13 @@ local phase = nil
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event") --trigger_engage
+	self:RegisterCombatLog("SPELL_CAST_START", "Birth", "BirthEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Sweep", "SweepEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Sand Blast", "SandBlastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Ground Rupture", "GroundRuptureEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Berserk", "BerserkEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Quake", "QuakeEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_sweep, trigger_sandBlast, trigger_emerge
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_berserk
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_popcornHitsYou
 
 	self:RegisterEvent("UNIT_HEALTH") --warn for enrage soon
 
@@ -267,24 +258,41 @@ function module:UNIT_HEALTH(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_engage"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:BirthEvent(ev)
+	if ev.sourceName == self.translatedName then
 		module:SendEngageSync()
+	end
+end
 
-	elseif msg == L["trigger_sweep"] then
+function module:SweepEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.sweep)
+	end
+end
 
-	elseif msg == L["trigger_sandBlast"] then
+function module:SandBlastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.sandBlast)
+	end
+end
 
-	elseif string.find(msg, L["trigger_popcornHitsYou"]) and self.db.profile.popcorn then
-		self:Popcorn()
-
-	elseif string.find(msg, L["trigger_emerge"]) then
+function module:GroundRuptureEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.emerge)
+	end
+end
 
-	elseif msg == L["trigger_berserk"] then
+function module:BerserkEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.berserk)
+	end
+end
+
+-- a Dirt Mound's Quake hitting you
+function module:QuakeEvent(ev)
+	if ev.sourceName == "Dirt Mound" and ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.popcorn then
+		self:Popcorn()
 	end
 end
 

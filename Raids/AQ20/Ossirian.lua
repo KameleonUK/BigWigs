@@ -3,6 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("Ossirian the Unscarred", "Ruins of 
 local element = nil -- current weakness school
 
 module.revision = 30012
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"bigicon", "warstomp", "cyclone", "sandstorm", "supreme", "weakness", "clickit", "bosskill"}
 
@@ -37,26 +38,18 @@ L:RegisterTranslations("enUS", function() return {
 	clickit_name = "Click a crystal now",
 	clickit_desc = "Timers for if you click after this timer, he will go supreme",
 
-	supreme_trigger = "Ossirian the Unscarred gains Strength of Ossirian.",
-	supreme_trigger2 = "Ossirian the Unscarred is afflicted by Strength of Ossirian.",
 	supreme_bar = "Supreme",
 	supremewarn = "Ossirian Supreme Mode!",
 	supremedelaywarn = "Supreme in %d seconds!",
 
-	debuff_trigger = "Ossirian the Unscarred is afflicted by (.+) Weakness.",
-	debuff_trigger2 = "Ossirian the Unscarred gains (.+) Weakness.",
 	debuffwarn = "Ossirian now weak to ",
 
-	ossiLostSupreme = "Strength of Ossirian fades from Ossirian the Unscarred.",-- CHAT_MSG_SPELL_AURA_GONE_OTHER",
 
 	expose = "Expose",
 	
-	cyclone_trigger = "Enveloping Winds",
 	cyclone_bar = "Cyclone",
-	warstomp_trigger = "War Stomp",
 	warstomp_bar = "War Stomp",
 	
-	sandstorm_trigger = "Sand Vortex's Harsh Winds hits you for",
 	
 	clickit_bar = "Crystal or die",
 	
@@ -98,26 +91,18 @@ L:RegisterTranslations("zhCN", function() return {
 	clickit_name = "现在点击水晶",
 	clickit_desc = "计时器，如果在此计时器后点击，他将变为狂暴状态",
 
-	supreme_trigger = "无疤者奥斯里安获得了奥斯里安之力的效果。",
-	supreme_trigger2 = "无疤者奥斯里安受到了奥西里安之力的影响。",
 	supreme_bar = "狂暴姿态",
 	supremewarn = "无疤者奥斯里安狂暴姿态!",
 	supremedelaywarn = "狂暴将在 %d 秒后出现！",
 
-	debuff_trigger = "无疤者奥斯里安受到了(.+)虚弱效果的影响。",
-	debuff_trigger2 = "无疤者奥斯里安获得了(.+)虚弱的效果。",
 	debuffwarn = "奥斯里安现在弱点是：",
 
-	ossiLostSupreme = "无疤者奥斯里安的奥斯里安之力效果消失了。",-- CHAT_MSG_SPELL_AURA_GONE_OTHER",
 
 	expose = "虚弱",
 	
-	cyclone_trigger = "包围之风",
 	cyclone_bar = "飓风术",
-	warstomp_trigger = "战争践踏",
 	warstomp_bar = "战争践踏",
 	
-	sandstorm_trigger = "沙尘漩涡的强风击中你造成",
 	
 	clickit_bar = "点击水晶或死亡",
 
@@ -163,17 +148,13 @@ local bwOssiSupreme = nil
 local bwOssiFirstWarstop = nil
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Strength of Ossirian", "SupremeEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Strength of Ossirian", "SupremeFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {"Fire Weakness", "Frost Weakness", "Nature Weakness", "Arcane Weakness", "Shadow Weakness"}, "WeaknessEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, "Enveloping Winds", "CycloneEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "War Stomp", "WarStompEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Harsh Winds", "SandstormEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event")
 
 	
 	self:ThrottleSync(3, syncName.weakness)
@@ -203,37 +184,58 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["ossiLostSupreme"] then
-		bwOssiSupreme = false
-	end
-	
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+-- after a weakness has run 46s without a new one, the Supreme timer can't be known any more
+local function CheckSupremeUnknown(self)
 	if ((bwOssiWeaknessTime + 46) < GetTime()) and bwOssiSupreme == false then
 		self:Bar("UNKNOWN Supreme timer", 30, icon.supreme, true, "red")
 		self:Message("WARNING! Supreme timer unknown!", "Attention", nil, "Beware")
 		bwOssiSupreme = nil
 	end
-	
-	local _, _, debuffName = string.find(msg, L["debuff_trigger"])
-	if string.find(msg, L["debuff_trigger"]) and debuffName ~= L["expose"] then
-		self:Sync(syncName.weakness .. " " .. debuffName)
-	end
-	
-	local _, _, debuffName = string.find(msg, L["debuff_trigger2"])
-	if string.find(msg, L["debuff_trigger2"]) and debuffName ~= L["expose"] then
-		self:Sync(syncName.weakness .. " " .. debuffName)
-	end
-	
-	if string.find(msg, L["cyclone_trigger"]) then
-		self:Sync(syncName.cyclone)
-	end
-	if string.find(msg, L["warstomp_trigger"]) then
-		self:Sync(syncName.warstomp)
-	end
-	if string.find(msg, L["supreme_trigger"]) or string.find(msg, L["supreme_trigger2"]) then
+end
+
+function module:SupremeEvent(ev)
+	CheckSupremeUnknown(self)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.supreme)
 	end
-	if string.find(msg, L["sandstorm_trigger"]) and self.db.profile.sandstorm then
+end
+
+function module:SupremeFadeEvent(ev)
+	if ev.destName == self.translatedName then
+		bwOssiSupreme = false
+	end
+	CheckSupremeUnknown(self)
+end
+
+-- "Fire Weakness" etc. on Ossirian: the school word is synced
+function module:WeaknessEvent(ev)
+	CheckSupremeUnknown(self)
+	if ev.destName == self.translatedName and ev.spellName then
+		local _, _, school = string.find(ev.spellName, "^(%a+) Weakness$")
+		if school and school ~= L["expose"] then
+			self:Sync(syncName.weakness .. " " .. school)
+		end
+	end
+end
+
+function module:CycloneEvent(ev)
+	CheckSupremeUnknown(self)
+	if ev.sourceName == self.translatedName or ev.subevent == "SPELL_AURA_APPLIED" then
+		self:Sync(syncName.cyclone)
+	end
+end
+
+function module:WarStompEvent(ev)
+	CheckSupremeUnknown(self)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.warstomp)
+	end
+end
+
+-- standing in a Sand Vortex
+function module:SandstormEvent(ev)
+	if ev.sourceName == "Sand Vortex" and ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.sandstorm then
 		if self.db.profile.bigicon then
 			self:WarningSign(icon.sandstorm, 1)
 		end

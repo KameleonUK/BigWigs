@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Fankriss the Unyielding", "Ahn'Qiraj")
 
 module.revision = 30067
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wound", "entangle", "bosskill"}
 
@@ -17,13 +18,8 @@ L:RegisterTranslations("enUS", function() return {
 	entangle_desc = "Warn for Entangle",
 	
 	
-	trigger_entangleYou = "You are afflicted by Entangle.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_entangleOther = "(.+) is afflicted by Entangle.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_entangleFade = "Entangle fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_entangle = " Entangled",
 	
-	trigger_woundYou = "You are afflicted by Mortal Wound %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_woundOther = "(.+) is afflicted by Mortal Wound %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	bar_wound = " Wounds",
 } end )
 
@@ -41,13 +37,8 @@ L:RegisterTranslations("zhCN", function() return {
     entangle_desc = "纠缠出现时进行警告",
 	
 	
-	trigger_entangleYou = "你受到了纠缠效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_entangleOther = "(.+)受到了纠缠效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_entangleFade = "纠缠效果从(.+)身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
     bar_entangle = " 纠缠持续",
 	
-	trigger_woundYou = "你受到了重伤效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_woundOther = "(.+)受到了重伤效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     bar_wound = " 重伤持续",
 } end )
 local timer = {
@@ -71,13 +62,10 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_entangleYou, trigger_woundYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_entangleOther, trigger_woundOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_entangleOther, trigger_woundOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Entangle", "EntangleEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Entangle", "EntangleFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", "Mortal Wound", "WoundEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_entangleFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_entangleFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_entangleFade
 	
 	self:ThrottleSync(0.1, syncName.entangle)
 	self:ThrottleSync(0.1, syncName.entangleFade)
@@ -93,29 +81,22 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_entangleYou"] then
-		self:Sync(syncName.entangle .. " " .. UnitName("Player"))
-		
-	elseif string.find(msg, L["trigger_entangleOther"]) then
-		local _,_,entangledPerson = string.find(msg, L["trigger_entangleOther"])
-		self:Sync(syncName.entangle .. " " .. entangledPerson)
-		
-	elseif string.find(msg, L["trigger_entangleFade"]) then
-		local _,_,entangledFadePerson = string.find(msg, L["trigger_entangleFade"])
-		self:Sync(syncName.entangleFade .. " " .. entangledFadePerson)
-		
-		
-	elseif string.find(msg, L["trigger_woundYou"]) then
-		local _,_,woundQty,_ = string.find(msg, L["trigger_woundYou"])
-		local woundPlayer = UnitName("Player")
-		local woundPlayerAndWoundQty = woundPlayer .. " " .. woundQty
-		self:Sync(syncName.wound.." "..woundPlayerAndWoundQty)
-		
-	elseif string.find(msg, L["trigger_woundOther"]) then
-		local _,_,woundPlayer,woundQty = string.find(msg, L["trigger_woundOther"])
-		local woundPlayerAndWoundQty = woundPlayer .. " " .. woundQty
-		self:Sync(syncName.wound.." "..woundPlayerAndWoundQty)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:EntangleEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.entangle .. " " .. ev.destName)
+	end
+end
+
+function module:EntangleFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.entangleFade .. " " .. ev.destName)
+	end
+end
+
+function module:WoundEvent(ev)
+	if ev.destName and ev.amount and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.wound .. " " .. ev.destName .. " " .. ev.amount)
 	end
 end
 

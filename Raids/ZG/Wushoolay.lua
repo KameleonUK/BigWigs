@@ -13,10 +13,8 @@ local module, L = BigWigs:ModuleDeclaration("Wushoolay", "Zul'Gurub")
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Wushoolay",
 
-	chainlightning_trigger = "Wushoolay begins to cast Chain Lightning.",
 	chainlightning_bar = "Chain Lightning",
 	chainlightning_message = "Chain Lightning! Interrupt it!",
-	lightningcloud_trigger = "You are afflicted by Lightning Cloud.",
 	lightningcloud_message = "Get out of the Lightning Cloud!",
 
 	chainlightning_cmd = "chainlightning",
@@ -31,10 +29,8 @@ L:RegisterTranslations("enUS", function() return {
 L:RegisterTranslations("deDE", function() return {
 	cmd = "Wushoolay",
 
-	chainlightning_trigger = "Wushoolay beginnt Kettenblitzschlag zu wirken.",
 	chainlightning_bar = "Kettenblitzschlag",
 	chainlightning_message = "Kettenblitzschlag! Unterbreche sie!",
-	lightningcloud_trigger = "Ihr seid von Blitzschlagwolke betroffen.",
 	lightningcloud_message = "Beweg dich aus der Blitzschlagwolke!",
 
 	chainlightning_cmd = "chainlightning",
@@ -49,10 +45,8 @@ L:RegisterTranslations("deDE", function() return {
 L:RegisterTranslations("esES", function() return {
 	--cmd = "Wushoolay",
 
-	chainlightning_trigger = "Wushoolay comienza a lanzar Cadena de relámpagos.",
 	chainlightning_bar = "Cadena de relámpagos",
 	chainlightning_message = "¡Cadena de relámpagos! Interrúmpela!",
-	lightningcloud_trigger = "Estás afligido por Nube de relámpagos.",
 	lightningcloud_message = "¡Muévate del Nube de relámpagos!",
 
 	--chainlightning_cmd = "chainlightning",
@@ -69,6 +63,7 @@ L:RegisterTranslations("esES", function() return {
 
 -- module variables
 module.revision = 20004 -- To be overridden by the module!
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName -- string or table {boss, add1, add2}
 module.toggleoptions = {"chainlightning", "lightningcloud", "bosskill"}
 
@@ -80,10 +75,8 @@ L:RegisterTranslations("zhCN", function() return {
 	-- Last update: 2024-06-22
     cmd = "Wushoolay",
 
-	chainlightning_trigger = "Wushoolay begins to cast Chain Lightning.",
     chainlightning_bar = "闪电链",
     chainlightning_message = "闪电链！打断它！",
-	lightningcloud_trigger = "You are afflicted by Lightning Cloud.",
     lightningcloud_message = "离开闪电云！",
 
 	chainlightning_cmd = "chainlightning",
@@ -110,8 +103,8 @@ local syncName = {
 
 -- called after module is enabled
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
+	self:RegisterCombatLog("SPELL_CAST_START", "Chain Lightning", "ChainLightningEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Lightning Cloud", "LightningCloudEvent")
 
 	self:ThrottleSync(3, syncName.chainlightning)
 end
@@ -120,11 +113,16 @@ end
 --      Events              --
 ------------------------------
 
-function module:Event(msg)
-	if msg == L["lightningcloud_trigger"] and self.db.profile.lightningcloud then
-		self:Message(L["lightningcloud_message"], "Attention", "Alarm")
-	elseif msg == L["chainlightning_trigger"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ChainLightningEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.chainlightning)
+	end
+end
+
+function module:LightningCloudEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.lightningcloud then
+		self:Message(L["lightningcloud_message"], "Attention", "Alarm")
 	end
 end
 

@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Gurubashi Bat Rider", "Zul'Gurub")
 
 module.revision = 20001
+module.combatLog = true -- the bomb emote drives it; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"bigicon", "bars"}
 module.trashMod = true
@@ -84,43 +85,5 @@ function module:Emote(msg)
 		end
 		
 		self:Sound("RunAway")
-	end
-end
-
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
 	end
 end

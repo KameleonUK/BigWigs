@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("High Priest Venoxis", "Zul'Gurub")
 
 module.revision = 30077
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.wipemobs = {"Razzashi Cobra"}
 module.toggleoptions = {"renew", "holyfire", "holywrath", "holynova", -1, "phase", -1, "poisoncloud", "venomspit", "enrage", "parasitic", -1, "adds", "bosskill"}
@@ -50,37 +51,25 @@ L:RegisterTranslations("enUS", function() return {
 	adds_desc = "Warn for Dead Adds",
 	
 	
-	trigger_renew = "High Priest Venoxis gains Renew.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_renewFade = "Renew fades from High Priest Venoxis.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_renew = "Renew",
 	msg_renew = "Renew - Dispel!",
 	
-	trigger_holyFireCast = "High Priest Venoxis begins to cast Holy Fire.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_holyFireYou = "You are afflicted by Holy Fire.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_holyFireOther = "(.+) is afflicted by Holy Fire.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_holyFireFade = "Holy Fire fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_holyFireCast = "Casting Holy Fire!",
 	bar_holyFireDur = " Holy Fire",
 	msg_holyFire = "Holy Fire - Dispel!",
 	
-	trigger_holyWrath = "High Priest Venoxis's Holy Wrath", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_holyWrathCd = "Holy Wrath CD",
 	
-	trigger_holyNova = "High Priest Venoxis's Holy Nova", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_holyNovaCd = "Holy Nova CD",
 	
 	trigger_phase2 = "Let the coils of hate unfurl!", --CHAT_MSG_MONSTER_YELL
 	msg_phase2 = "Phase 2 - Avoid Poison Clouds!",
 	
-	trigger_poisonCloudYou = "You are afflicted by Poison Cloud.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_poisonCloudYouFade = "Poison Cloud fades from you.", --CHAT_MSG_SPELL_AURA_GONE_SELF
 	msg_poisonCloudYou = "Move away from poison cloud!",
 	
-	trigger_venomSpit = "High Priest Venoxis's Venom Spit hits (.+) for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_venomSpitFade = "Venom Spit fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_venomSpit = " Venom Spit",
+	msg_venomSpit = "Venom Spit - Cure Poison!",
 	
-	trigger_enrage = "High Priest Venoxis gains Enrage.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_enrage = "Venoxis is Enraged!",
 	
 	--no trigger for parasitic serpent, 1st at 11sec after p2, next is ???
@@ -137,37 +126,24 @@ L:RegisterTranslations("zhCN", function() return {
     adds_desc = "增援死亡时进行警告",
 	
 	
-	trigger_renew = "High Priest Venoxis gains Renew.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_renewFade = "Renew fades from High Priest Venoxis.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_renew = "恢复",
     msg_renew = "恢复 - 驱散！",
 	
-	trigger_holyFireCast = "High Priest Venoxis begins to cast Holy Fire.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_holyFireYou = "You are afflicted by Holy Fire.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_holyFireOther = "(.+) is afflicted by Holy Fire.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_holyFireFade = "Holy Fire fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_holyFireCast = "施放神圣之火！",
     bar_holyFireDur = " 神圣之火",
     msg_holyFire = "神圣之火 - 驱散！",
 	
-	trigger_holyWrath = "High Priest Venoxis's Holy Wrath", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_holyWrathCd = "神圣愤怒冷却",
 	
-	trigger_holyNova = "High Priest Venoxis's Holy Nova", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_holyNovaCd = "神圣新星冷却",
 	
 	trigger_phase2 = "Let the coils of hate unfurl!", --CHAT_MSG_MONSTER_YELL
     msg_phase2 = "第二阶段 - 避免毒云！",
 	
-	trigger_poisonCloudYou = "You are afflicted by Poison Cloud.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_poisonCloudYouFade = "Poison Cloud fades from you.", --CHAT_MSG_SPELL_AURA_GONE_SELF
     msg_poisonCloudYou = "远离毒云！",
 	
-	trigger_venomSpit = "High Priest Venoxis's Venom Spit hits (.+) for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_venomSpitFade = "Venom Spit fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_venomSpit = " 喷毒",
 	
-	trigger_enrage = "High Priest Venoxis gains Enrage.",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_enrage = "温诺希斯激怒了！",
 	
 	--no trigger for parasitic serpent, 1st at 11sec after p2, next is ???
@@ -246,19 +222,22 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_phase2
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_renew, trigger_enrage
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Renew", "RenewEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Renew", "RenewFadeEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Holy Fire", "HolyFireCastEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Holy Fire", "HolyFireEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Holy Fire", "HolyFireFadeEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Holy Wrath", "HolyWrathEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Holy Nova", "HolyNovaEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Venom Spit", "VenomSpitEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Venom Spit", "VenomSpitFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Poison Cloud", "PoisonCloudEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Poison Cloud", "PoisonCloudFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_holyFireFade, trigger_poisonCloudYouFade, trigger_venomSpitFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_holyFireFade, trigger_venomSpitFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_renewFade, trigger_holyFireFade, trigger_venomSpitFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_venomSpit, trigger_holyWrath, trigger_holyNova
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_venomSpit, trigger_holyWrath, trigger_holyNova
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_holyFireCast, trigger_venomSpit, trigger_holyWrath, trigger_holyNova
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_holyFireYou, trigger_poisonCloudYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_holyFireOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_holyFireOther
 
 	
 	self:ThrottleSync(2, syncName.renew)
@@ -285,7 +264,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -304,10 +282,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Razzashi Cobra"))then
+-- UNIT_DIED: the Razzashi Cobra counter (Venoxis's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Razzashi Cobra" then
 		addDead = addDead + 1
 		if addDead <= 4 then
 			self:Sync(syncName.addDead .. " " .. addDead)
@@ -321,51 +298,75 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_renew"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:RenewEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.renew)
-	elseif msg == L["trigger_renewFade"] then
+	end
+end
+
+function module:RenewFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.renewFade)
-	
-	
-	elseif msg == L["trigger_holyFireCast"] then
+	end
+end
+
+function module:HolyFireCastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.holyFireCast)
-	
-	elseif msg == L["trigger_holyFireYou"] then
-		self:Sync(syncName.holyFire .. " "..UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_holyFireOther"]) then
-		local _,_,holyFirePerson, _ = string.find(msg, L["trigger_holyFireOther"])
-		self:Sync(syncName.holyFire .. " "..holyFirePerson)
-	
-	elseif string.find(msg, L["trigger_holyFireFade"]) then
-		local _,_,holyFireFadePerson, _ = string.find(msg, L["trigger_holyFireFade"])
-		if holyFireFadePerson == "you" then holyFireFadePerson = UnitName("Player") end
-		self:Sync(syncName.holyFireFade .. " "..holyFireFadePerson)
-		
-	elseif string.find(msg, L["trigger_holyWrath"]) then
+	end
+end
+
+function module:HolyFireEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.holyFire .. " " .. ev.destName)
+	end
+end
+
+function module:HolyFireFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.holyFireFade .. " " .. ev.destName)
+	end
+end
+
+function module:HolyWrathEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.holyWrath)
-		
-	elseif string.find(msg, L["trigger_holyNova"]) then
+	end
+end
+
+function module:HolyNovaEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.holyNova)
-		
-	elseif string.find(msg, L["trigger_venomSpit"]) then
-		local _,_,venomSpitPerson, _ = string.find(msg, L["trigger_venomSpit"])
-		if venomSpitPerson == "you" then venomSpitPerson = UnitName("Player") end
-		self:Sync(syncName.venomSpit .. " "..venomSpitPerson)
-	
-	elseif string.find(msg, L["trigger_venomSpitFade"]) then
-		local _,_,venomSpitFadePerson, _ = string.find(msg, L["trigger_venomSpitFade"])
-		if venomSpitFadePerson == "you" then venomSpitFadePerson = UnitName("Player") end
-		self:Sync(syncName.venomSpitFade .. " "..venomSpitFadePerson)
-		
-		
-	elseif msg == L["trigger_poisonCloudYou"] and self.db.profile.poisoncloud then
+	end
+end
+
+function module:VenomSpitEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destName then
+		self:Sync(syncName.venomSpit .. " " .. ev.destName)
+	end
+end
+
+function module:VenomSpitFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.venomSpitFade .. " " .. ev.destName)
+	end
+end
+
+function module:PoisonCloudEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.poisoncloud then
 		self:PoisonCloudYou()
-	elseif msg == L["trigger_poisonCloudYouFade"] and self.db.profile.poisoncloud then
+	end
+end
+
+function module:PoisonCloudFadeEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.poisoncloud then
 		self:PoisonCloudYouFade()
-	
-	elseif msg == L["trigger_enrage"] then
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
 	end
 end

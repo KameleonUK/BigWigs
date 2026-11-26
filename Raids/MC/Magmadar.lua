@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Magmadar", "Molten Core")
 
 module.revision = 30073
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"panic", "frenzy", "conflagration", "bosskill"}
 
@@ -21,20 +22,14 @@ L:RegisterTranslations("enUS", function() return {
 	conflagration_desc = "Warn for Conflagration",
 	
 	
-	trigger_panic = "afflicted by Panic.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_panic2 = "Magmadar's Panic fails.", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_panic3 = "Magmadar's Panic was resisted", --CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_panicCd = "Fear CD",
 	bar_panicSoon = "Fear Soon...",
 	msg_panic = "Fear - Dispel!",
 	
-	trigger_frenzy = "Magmadar gains Frenzy.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_frenzyFade = "Frenzy fades from Magmadar.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_frenzyCd = "Frenzy CD",
 	bar_frenzyDur = "Frenzy!",
 	msg_frenzy = "Frenzy - Tranq now!",
 	
-	trigger_conflagYou = "You are afflicted by Conflagration.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 } end)
 
 local timer = {
@@ -74,17 +69,13 @@ local frenzyEndTime = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_panic, trigger_conflagYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_panic
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_panic
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, {19408, "Panic"}, "PanicEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19451, "Frenzy"}, "FrenzyEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {19451, "Frenzy"}, "FrenzyFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19428, "Conflagration"}, "ConflagrationEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_panic2
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_panic2, trigger_panic3
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_panic2, trigger_panic3
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_frenzy
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_frenzyFade
 
 
 	self:ThrottleSync(15, syncName.panic)
@@ -117,16 +108,27 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_panic"]) or string.find(msg, L["trigger_panic2"]) or string.find(msg, L["trigger_panic3"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:PanicEvent(ev)
+	if ev.sourceName == self.translatedName or ev.subevent == "SPELL_AURA_APPLIED" then
 		self:Sync(syncName.panic)
-		
-	elseif msg == L["trigger_frenzy"] then
+	end
+end
+
+function module:FrenzyEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.frenzy)
-	elseif msg == L["trigger_frenzyFade"] then
+	end
+end
+
+function module:FrenzyFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.frenzyFade)
-		
-	elseif msg == L["trigger_conflagYou"] and self.db.profile.conflagration then
+	end
+end
+
+function module:ConflagrationEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and self.db.profile.conflagration then
 		self:Conflagration()
 	end
 end

@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Battleguard Sartura", "Ahn'Qiraj")
 
 module.revision = 30075
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.wipemobs = {"Sartura's Royal Guard"}
 module.toggleoptions = {"whirlwind", "adds", "enrage", "berserk", "bosskill"}
@@ -29,21 +30,16 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_engage = "You will be judged for defiling these sacred grounds! The laws of the Ancients will not be challenged! Trespassers will be annihilated!", --CHAT_MSG_MONSTER_YELL
 	trigger_bossDead = "I serve to the last!", --CHAT_MSG_MONSTER_YELL
 	
-	trigger_addDead = "Sartura's Royal Guard dies.", --CHAT_MSG_COMBAT_HOSTILE_DEATH
 	msg_addDead = "%d/3 Sartura's Royal Guards dead!",
 	
-	trigger_whirlwind = "Battleguard Sartura gains Whirlwind.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	bar_whirlwind = "Whirlwind!",
 	msg_whirlwind = "Whirlwind!",
 	bar_whirlwindCd = "Whirlwind CD",
 	
-	trigger_whirlwindFade = "Whirlwind fades from Battleguard Sartura.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	msg_whirlwindFade = "Whirlwind ended!",
 	
-	trigger_enrage = "Battleguard Sartura gains Enrage", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_enrage = "Enrage - Spam heals!",
 	
-	trigger_berserk = "Battleguard Sartura gains Berserk.", --to be confirmed
 	msg_berserk = "Berserk!",
 	bar_berserk = "Berserk",
 	msg_berserk60 = "Berserk in 60 seconds!",
@@ -76,21 +72,16 @@ L:RegisterTranslations("zhCN", function() return {
     trigger_engage = "你将因玷污这些神圣的土地而受到审判！上古法则不容挑战！入侵者将被消灭！", --CHAT_MSG_MONSTER_YELL
     trigger_bossDead = "我服务到最后！", --CHAT_MSG_MONSTER_YELL
 
-    trigger_addDead = "沙尔图拉皇家卫士死亡了。", --CHAT_MSG_COMBAT_HOSTILE_DEATH
     msg_addDead = "%d/3 沙尔图拉皇家卫士死亡！",
 
-    trigger_whirlwind = "沙尔图拉获得了旋风斩的效果。", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     bar_whirlwind = "旋风斩！",
     msg_whirlwind = "旋风斩！",
     bar_whirlwindCd = "旋风斩 CD",
 
-    trigger_whirlwindFade = "Whirlwind fades from Battleguard Sartura.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
     msg_whirlwindFade = "旋风斩结束！",
 
-    trigger_enrage = "沙尔图拉生气了！", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_enrage = "激怒 - 疯狂治疗！",
 
-    trigger_berserk = "沙尔图拉陷入狂暴状态！", --to be confirmed
     msg_berserk = "狂暴！",
     bar_berserk = "狂暴",
     msg_berserk60 = "60秒后狂暴！",
@@ -128,9 +119,12 @@ function module:OnEnable()
 	
 	--self:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Whirlwind", "WhirlwindEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Whirlwind", "WhirlwindFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Berserk", "BerserkEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")
 
 
 	self:ThrottleSync(3, syncName.whirlwind)
@@ -142,7 +136,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -162,10 +155,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if msg == L["trigger_addDead"] and self.db.profile.adds then
+-- UNIT_DIED: her Royal Guards (Sartura's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Sartura's Royal Guard" and self.db.profile.adds then
 		addDeadCount = addDeadCount + 1
 		self:Message(string.format(L["msg_addDead"], addDeadCount), "Positive", false, nil, false)
 	end
@@ -177,16 +169,27 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_whirlwind"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WhirlwindEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.whirlwind)
-	elseif msg == L["trigger_whirlwindFade"] then
+	end
+end
+
+function module:WhirlwindFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.whirlwindFade)
-	
-	elseif msg == L["trigger_enrage"] then
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
-	
-	elseif msg == L["trigger_berserk"] then
+	end
+end
+
+function module:BerserkEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.berserk)
 	end
 end

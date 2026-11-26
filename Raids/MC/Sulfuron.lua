@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Sulfuron Harbinger", "Molten Core")
 
 module.revision = 30078
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"heal", "knockback", "flamespear", "inspire", "shadowwordpain", "immolate", "adds", "bosskill"}
 module.wipemobs = {"Flamewaker Priest"}
@@ -38,26 +39,20 @@ L:RegisterTranslations("enUS", function() return {
 	adds_desc = "Warn for Adds Deaths",
 	
 	
-	trigger_handOfRagnaros = "afflicted by Hand of Ragnaros.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	bar_handOfRagnarosCd = "Hand of Ragnaros CD",
 	bar_handOfRagnarosDur = "Hand of Ragnaros Stun",
 	
-	trigger_darkMending = "Flamewaker Priest begins to cast Dark Mending.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF
 	bar_darkMending = "Dark Mending",
 	msg_darkMending = "Dark Mending - Interrupt!",
 	
-	trigger_flameSpear = "Sulfuron Harbinger begins to perform Flame Spear.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_flameSpearCd = "Flame Spear CD",
 	bar_flameSpearCast = "Flame Spear!",
 	
-	trigger_inspire = "gains Inspire.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	bar_inspireDur = "Inspire",
 	msg_inspire = "Inspire - Attack Speed +100% & Damage +25%",
 	
-	trigger_shadowWordPain = "(.+) is afflicted by Shadow Word: Pain.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	msg_shadowWordPain = "Shadow Word: Pain - Dispel!",
 	
-	trigger_immolate = "(.+) is afflicted by Immolate.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 	msg_immolate = "Immolate - Dispel!",
 	
 	msg_addDead = "/4 Flamewaker Protectors Dead",
@@ -110,15 +105,16 @@ local addDead = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_handOfRagnaros, trigger_shadowWordPain
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_handOfRagnaros, trigger_shadowWordPain
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_handOfRagnaros, trigger_shadowWordPain
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED"}, {19780, "Hand of Ragnaros"}, "HandEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {19775, "Dark Mending"}, "DarkMendingEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {19781, "Flame Spear"}, "FlameSpearEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19779, "Inspire"}, "InspireEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19776, "Shadow Word: Pain"}, "ShadowWordPainEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {20294, "Immolate"}, "ImmolateEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "Event") --trigger_darkMending
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_flameSpear
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_inspire
 	
 	
 	self:ThrottleSync(1, syncName.darkMending)
@@ -134,7 +130,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --addDead
 end
 
 function module:OnEngage()
@@ -151,10 +146,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Flamewaker Priest")) then
+-- UNIT_DIED: the Flamewaker Priest counter (Sulfuron's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Flamewaker Priest" then
 		addDead = addDead + 1
 		if addDead <= 4 then
 			self:Sync(syncName.addDead .. " " .. addDead)
@@ -162,36 +156,41 @@ function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_handOfRagnaros"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:HandEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.handOfRagnaros)
-	
-	elseif msg == L["trigger_darkMending"] then
+	end
+end
+
+function module:DarkMendingEvent(ev)
+	if ev.sourceName == "Flamewaker Priest" then
 		self:Sync(syncName.darkMending)
-	
-	elseif msg == L["trigger_flameSpear"] then
+	end
+end
+
+function module:FlameSpearEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.flameSpear)
-		
-	elseif string.find(msg, L["trigger_inspire"]) then
+	end
+end
+
+function module:InspireEvent(ev)
+	if ev.sourceName == self.translatedName or ev.sourceName == "Flamewaker Priest" or ev.destName == self.translatedName then
 		self:Sync(syncName.inspire)
-		
-	elseif string.find(msg, L["trigger_shadowWordPain"]) then
-		local _,_, swpPerson, _ = string.find(msg, L["trigger_shadowWordPain"])
-		for i=1,GetNumRaidMembers() do
-			if UnitName("raid"..i) == swpPerson then
-				self:Sync(syncName.shadowWordPain)
-				break
-			end
-		end
-		
-	elseif string.find(msg, L["trigger_immolate"]) then
-		local _,_, immolatePerson, _ = string.find(msg, L["trigger_immolate"])
-		for i=1,GetNumRaidMembers() do
-			if UnitName("raid"..i) == immolatePerson then
-				self:Sync(syncName.immolate)
-				break
-			end
-		end
+	end
+end
+
+-- the priests' Shadow Word: Pain and Immolate on a raid member
+function module:ShadowWordPainEvent(ev)
+	if ev.sourceName == "Flamewaker Priest" and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.shadowWordPain)
+	end
+end
+
+function module:ImmolateEvent(ev)
+	if ev.sourceName == "Flamewaker Priest" and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.immolate)
 	end
 end
 

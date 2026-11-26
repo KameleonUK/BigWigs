@@ -1,5 +1,6 @@
 local module, L = BigWigs:ModuleDeclaration("Viscidus", "Ahn'Qiraj")
 module.revision = 30067
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "volley", "toxin", "freezestages", "freezecount", "pokecount", "glob", "bosskill" }
 
@@ -32,22 +33,12 @@ L:RegisterTranslations("enUS", function()
 		glob_desc = "Counts the Globs as they die",
 
 
-		trigger_volley = "afflicted by Poison Bolt Volley.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
 		bar_volley = "Poison Bolt Volley",
 
-		trigger_toxin = "You are afflicted by Toxin.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 		msg_toxin = "Move from Toxin Cloud!",
-		trigger_toxinFade = "Toxin fades from you.", --CHAT_MSG_SPELL_AURA_GONE_OTHER",
 
-		trigger_frostDmg = "Frost damage", --CHAT_MSG_SPELL_SELF_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE // CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE
-		trigger_chilledDmg = "gains Chilled", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-		trigger_wintersChill = "gains Winter's Chill", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 		bar_frostDmg = "Frost hits remaining",
 
-		trigger_pokeYou = "hit Viscidus for", --CHAT_MSG_COMBAT_SELF_HITS
-		trigger_pokeOther = "hits Viscidus for", --CHAT_MSG_COMBAT_PARTY_HITS // CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS
-		trigger_pokeCritYou = "crit Viscidus for", --CHAT_MSG_COMBAT_SELF_HITS
-		trigger_pokeCritOther = "crits Viscidus for", --CHAT_MSG_COMBAT_PARTY_HITS // CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS
 		bar_poke = "Pokes remaining",
 
 		trigger_slow = " begins to slow!", --CHAT_MSG_RAID_BOSS_EMOTE
@@ -97,22 +88,12 @@ L:RegisterTranslations("zhCN", function() return {
     glob_desc = "计数水珠的死亡次数",
 
 
-    trigger_volley = "受到了毒箭之雨效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
     bar_volley = "毒箭齐射",
     
-    trigger_toxin = "你受到了剧毒效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
     msg_toxin = "远离毒云！",
-    trigger_toxinFade = "剧毒效果从你身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_OTHER",
 
-    trigger_frostDmg = "冰霜伤害",--CHAT_MSG_SPELL_SELF_DAMAGE // CHAT_MSG_SPELL_PARTY_DAMAGE // CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE
-    trigger_chilledDmg = "获得冰冻",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_wintersChill = "获得深冬之寒",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     bar_frostDmg = "剩余冰霜击中次数",
     
-    trigger_pokeYou = "击中维希度斯",--CHAT_MSG_COMBAT_SELF_HITS
-    trigger_pokeOther = "击中维希度斯",--CHAT_MSG_COMBAT_PARTY_HITS // CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS
-    trigger_pokeCritYou = "击中维希度斯",--CHAT_MSG_COMBAT_SELF_HITS
-    trigger_pokeCritOther = "击中维希度斯",--CHAT_MSG_COMBAT_PARTY_HITS // CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS
     bar_poke = "剩余戳击次数",
     
     trigger_slow = "开始变慢！",--CHAT_MSG_RAID_BOSS_EMOTE
@@ -214,20 +195,16 @@ function module:OnEnable()
 
 	self:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE")--trigger_slow...
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_volley, trigger_toxin
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_volley
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Poison Bolt Volley", "VolleyEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Toxin", "ToxinEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Toxin", "ToxinFadeEvent")
+	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE"}, nil, "FrostDamageEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {"Chilled", "Winter's Chill"}, "ChillEvent")
+	self:RegisterCombatLog("SWING_DAMAGE", nil, "PokeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE", "Event")--trigger_frostDmg
-	self:RegisterEvent("CHAT_MSG_SPELL_PARTY_DAMAGE", "Event")--trigger_frostDmg
-	self:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_frostDmg
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_chilledDmg, trigger_wintersChill
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_toxinFade
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS", "CheckPhysical")--trigger_pokeYou trigger_pokeCritYou
-	self:RegisterEvent("CHAT_MSG_COMBAT_PARTY_HITS", "CheckPhysical")--trigger_pokeOther, trigger_pokeCritOther
-	self:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS", "CheckPhysical")--trigger_pokeOther, trigger_pokeCritOther
 
 	self:ThrottleSync(8, syncName.volley)
 	self:ThrottleSync(5, syncName.slow)
@@ -240,7 +217,6 @@ end
 
 function module:OnSetup()
 	self.started = nil
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -261,10 +237,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Glob of Viscidus")) then
+-- UNIT_DIED: the globs (Viscidus's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Glob of Viscidus" then
 		self:Glob()
 	end
 end
@@ -283,18 +258,44 @@ function module:CHAT_MSG_RAID_BOSS_EMOTE(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_volley"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:VolleyEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.volley)
+	end
+end
 
-	elseif msg == L["trigger_toxin"] then
+function module:ToxinEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
 		self:Toxin()
-	elseif msg == L["trigger_toxinFade"] then
-		self:ToxinFade()
+	end
+end
 
-	elseif string.find(msg, L["trigger_frostDmg"]) or string.find(msg, L["trigger_chilledDmg"]) or string.find(msg, L["trigger_wintersChill"]) then
-		if checkFrost == true then
-			self:FrostDmg()
+function module:ToxinFadeEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") then
+		self:ToxinFade()
+	end
+end
+
+-- frost damage on Viscidus from the raid, for the freeze counter
+function module:FrostDamageEvent(ev)
+	if checkFrost == true and ev.destName == self.translatedName and (ev.school == 16 or ev.spellSchool == 16) and BigWigs:IsGroupMember(ev.sourceFlags) then
+		self:FrostDmg()
+	end
+end
+
+function module:ChillEvent(ev)
+	if checkFrost == true and ev.destName == self.translatedName then
+		self:FrostDmg()
+	end
+end
+
+-- melee hits on Viscidus while he is frozen, for the shatter counter
+function module:PokeEvent(ev)
+	if checkPhysical == true and ev.destName == self.translatedName and BigWigs:IsGroupMember(ev.sourceFlags) then
+		pokeCount = pokeCount + 1
+		if self.db.profile.pokecount then
+			self:TriggerEvent("BigWigs_SetCounterBar", self, L["bar_poke"], pokeCount)
 		end
 	end
 end
@@ -463,17 +464,6 @@ function module:FrostDmg()
 end
 
 --update poke bar on poke damage
-function module:CheckPhysical(msg)
-	if checkPhysical == true then
-		if string.find(msg, L["trigger_pokeYou"]) or string.find(msg, L["trigger_pokeCritYou"]) or string.find(msg, L["trigger_pokeOther"]) or string.find(msg, L["trigger_pokeCritOther"]) then
-			pokeCount = pokeCount + 1
-			if self.db.profile.pokecount then
-				self:TriggerEvent("BigWigs_SetCounterBar", self, L["bar_poke"], pokeCount)
-			end
-		end
-	end
-end
-
 --update glob bar on glob death
 function module:Glob()
 	globDeathCount = globDeathCount + 1

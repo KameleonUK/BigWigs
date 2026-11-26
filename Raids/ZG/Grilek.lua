@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Gri'lek", "Zul'Gurub")
 
 module.revision = 30057
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"avatar", "puticon", "stun", "groundtremor", "roots", "sweepingstrikes", "bosskill"}
 
@@ -33,30 +34,18 @@ L:RegisterTranslations("enUS", function() return {
 	sweepingstrikes_desc = "Warn for Sweeping Strikes.",
 	
 	
-	trigger_avatar = "Gri'lek is afflicted by Avatar.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-	trigger_avatarFade = "Avatar fades from Gri'lek.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_avatarCd = "Avatar CD",
 	bar_avatarDur = "Avatar!",
 	msg_avatar = "Avatar - Run away from the boss!",
 	
-	trigger_stun = "Gri'lek is afflicted by Stun.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-	trigger_stunFade = "Stun fades from Gri'lek.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_stun = "Gri'lek Stunned",
 	
-	trigger_groundTremor = "afflicted by Ground Tremor.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_groundTremorFade = "Ground Tremor fades from", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_groundTremorCd = "Ground Tremor CD",
 	bar_groundTremorDur = "Ground Tremor Stun",
 	
-	trigger_rootsYou = "You are afflicted by Entangling Roots.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_rootsOther = "(.+) is afflicted by Entangling Roots.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_rootsFade = "Entangling Roots fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_roots = " Rooted",
 	
 	--untested
-	trigger_sweepingStrikes = "Gri'lek gains Sweeping Strikes.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_sweepingStrikes2 = "Gri'lek is afflicted Sweeping Strikes.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-	trigger_sweepingStrikesFade = "Sweeping Strikes fades from Gri'lek.", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_sweepingStrikes = "Sweeping Strikes!",
 } end )
 
@@ -91,30 +80,18 @@ L:RegisterTranslations("zhCN", function() return {
     sweepingstrikes_desc = "横扫攻击出现时进行警告。",
 
 
-    trigger_avatar = "Gri'lek is afflicted by Avatar.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-    trigger_avatarFade = "Avatar fades from Gri'lek.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_avatarCd = "天神下凡 CD",
     bar_avatarDur = "天神下凡！",
     msg_avatar = "天神下凡 - 远离Boss！",
 	
-    trigger_stun = "Gri'lek is afflicted by Stun.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-    trigger_stunFade = "Stun fades from Gri'lek.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_stun = "格里雷克昏迷",
 
-    trigger_groundTremor = "afflicted by Ground Tremor.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-    trigger_groundTremorFade = "Ground Tremor fades from", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_groundTremorCd = "地震 CD",
     bar_groundTremorDur = "地震昏迷",
 
-    trigger_rootsYou = "You are afflicted by Entangling Roots.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_rootsOther = "(.+) is afflicted by Entangling Roots.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-    trigger_rootsFade = "Entangling Roots fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_roots = " 纠缠",
 	
 	--untested
-    trigger_sweepingStrikes = "Gri'lek gains Sweeping Strikes.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_sweepingStrikes2 = "Gri'lek is afflicted Sweeping Strikes.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE
-    trigger_sweepingStrikesFade = "Sweeping Strikes fades from Gri'lek.", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_sweepingStrikes = "横扫攻击！",
     you = "you",
 } end )
@@ -171,17 +148,19 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_sweepingStrikes
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Avatar", "AvatarEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Avatar", "AvatarFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Stun", "StunEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Stun", "StunFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Ground Tremor", "GroundTremorEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Ground Tremor", "GroundTremorFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Entangling Roots", "RootsEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Entangling Roots", "RootsFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Sweeping Strikes", "SweepingStrikesEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Sweeping Strikes", "SweepingStrikesFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "Event") --trigger_avatar, trigger_stun, trigger_sweepingStrikes2
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_groundTremor, trigger_rootsYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_groundTremor, trigger_rootsOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_groundTremor, trigger_rootsOther
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_rootsFade, trigger_groundTremorFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_rootsFade, trigger_groundTremorFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_avatarFade, trigger_stunFade, trigger_rootsFade, trigger_sweepingStrikesFade, trigger_groundTremorFade
 
 	self:ThrottleSync(3, syncName.avatar)
 	self:ThrottleSync(3, syncName.avatarOver)
@@ -227,39 +206,63 @@ function module:GrilekTarget()
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_avatar"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:AvatarEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.avatar)
-	elseif msg == L["trigger_avatarFade"] then
+	end
+end
+
+function module:AvatarFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.avatarOver)
-	
-	elseif msg == L["trigger_stun"] then
+	end
+end
+
+function module:StunEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.stun)
-	elseif msg == L["trigger_stunFade"] then
+	end
+end
+
+function module:StunFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.stunFade)
-	
-	elseif string.find(msg, L["trigger_groundTremor"]) then
+	end
+end
+
+function module:GroundTremorEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.groundTremor)
-	elseif string.find(msg, L["trigger_groundTremorFade"]) then
+	end
+end
+
+function module:GroundTremorFadeEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
 		self:Sync(syncName.groundTremorFade)
-		
-		
-	elseif string.find(msg, L["trigger_rootsYou"]) then
-		self:Sync(syncName.roots .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_rootsOther"]) then
-		local _, _, rootsPlayer, _ = string.find(msg, L["trigger_rootsOther"])
-		self:Sync(syncName.roots .. " " .. rootsPlayer)
-	
-	elseif string.find(msg, L["trigger_rootsFade"]) then
-		local _, _, rootsFadePlayer, _ = string.find(msg, L["trigger_rootsFade"])
-		if rootsFadePlayer == "you" then rootsFadePlayer = UnitName("Player") end
-		self:Sync(syncName.rootsFade .. " " .. rootsFadePlayer)
-	
-	
-	elseif msg == L["trigger_sweepingStrikes"] or msg == L["trigger_sweepingStrikes2"] then
+	end
+end
+
+function module:RootsEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.roots .. " " .. ev.destName)
+	end
+end
+
+function module:RootsFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.rootsFade .. " " .. ev.destName)
+	end
+end
+
+function module:SweepingStrikesEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.sweepingStrikes)
-	elseif msg == L["trigger_sweepingStrikesFade"] then
+	end
+end
+
+function module:SweepingStrikesFadeEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.sweepingStrikesFade)
 	end
 end

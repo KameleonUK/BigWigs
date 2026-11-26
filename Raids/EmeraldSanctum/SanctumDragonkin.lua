@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Sanctum Dragonkin", "Emerald Sanctum")
 
 module.revision = 30021
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "reflect" }
 module.trashMod = true
@@ -17,8 +18,6 @@ L:RegisterTranslations("enUS", function()
 		reflect_name = "Reflect Alert",
 		reflect_desc = "Warn for Reflect",
 
-		trigger_reflect = "Sanctum Dragonkin gains Reflection.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-		trigger_reflectFade = "Reflection fades from Sanctum Dragonkin.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 
 		bar_reflect = "Dragonkin Spell Reflect",
 		msg_reflect = "Dragonkin Spell Reflect",
@@ -43,8 +42,6 @@ L:RegisterTranslations("zhCN", function() return {
     reflect_name = "反射警报",
     reflect_desc = "圣所龙人获得反射时进行警告",
 
-    trigger_reflect = "圣所龙人获得了反射的效果。",--CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-    trigger_reflectFade = "反射效果从圣所龙人身上消失。",--CHAT_MSG_SPELL_AURA_GONE_OTHER
         
     bar_reflect = "龙人法术反射",
     msg_reflect = "龙人法术反射",
@@ -65,7 +62,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event")--trigger_reflect
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {27564, "Reflection"}, "ReflectEvent")
 
 	self:ThrottleSync(1, syncName.reflect)
 end
@@ -80,50 +77,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-			or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then
-				return false
-			end
-			if type(t) == "string" then
-				t = { t }
-			end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
-	end
-end
-
-function module:Event(msg)
-	if msg == L["trigger_reflect"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:ReflectEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.reflect)
 	end
 end

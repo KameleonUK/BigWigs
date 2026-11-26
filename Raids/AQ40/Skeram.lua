@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("The Prophet Skeram", "Ahn'Qiraj")
 
 module.revision = 30067
+module.combatLog = true -- triggers from the combat log; the kill is the death yell, or no Skeram left fighting
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"mc", "bosskill"}
 
@@ -17,10 +18,6 @@ L:RegisterTranslations("enUS", function()
 	split_desc = "Warn before Splitting",
 	
 	
-		trigger_mcYou = "You are afflicted by True Fulfillment", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE (unconfirmed)
-		trigger_mcOther2 = "(.+) %(.+%) is afflicted by True Fulfillment", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE new client pet message format
-		trigger_mcOther = "(.+) is afflicted by True Fulfillment", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_mcFade = "True Fulfillment fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	msg_mc = " is MC",
 	bar_mc = " MC",
 	
@@ -47,9 +44,6 @@ L:RegisterTranslations("zhCN", function() return {
     split_name = "分裂警报",
     split_desc = "分裂前进行警告",
     
-    trigger_mcYou = "You are afflicted by True Fulfillment.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE (unconfirmed)
-    trigger_mcOther = "(.+) is afflicted by True Fulfillment.",--CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_mcFade = "True Fulfillment fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     msg_mc = " 被精神控制，快羊他！",
     bar_mc = " 精神控制",
     
@@ -79,12 +73,9 @@ local syncName = {
 function module:OnEnable()
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_kill
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--mcYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event")--mcOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "True Fulfillment", "McEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "True Fulfillment", "McFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_mcFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_mcFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_mcFade
 	
 	self:ThrottleSync(1, syncName.mc)
 	self:ThrottleSync(1, syncName.mcFade)
@@ -109,45 +100,10 @@ end
 function module:CheckForWipe()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then
-				return false
-			end
-			if type(t) == "string" then
-				t = { t }
-			end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
+-- his images share his name: a death ends the fight only when no Skeram is left fighting
+function module:BossUnitDied(ev)
+	if not self:IsEnableTriggerInCombat() then
+		self:SendBossDeathSync()
 	end
 end
 
@@ -169,21 +125,16 @@ function module:CheckTrueSkeram()
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_mcYou"]) then
-		self:Sync(syncName.mc .. " " .. UnitName("Player"))
-	elseif string.find(msg, L["trigger_mcOther2"]) then
-		local _, _, mcPerson = string.find(msg, L["trigger_mcOther2"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
-	elseif string.find(msg, L["trigger_mcOther"]) then
-		local _, _, mcPerson = string.find(msg, L["trigger_mcOther"])
-		self:Sync(syncName.mc .. " " .. mcPerson)
-	elseif string.find(msg, L["trigger_mcFade"]) then
-		local _, _, mcFadePerson = string.find(msg, L["trigger_mcFade"])
-		if mcFadePerson == "you" then
-			mcFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.mcFade .. " " .. mcFadePerson)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:McEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mc .. " " .. ev.destName)
+	end
+end
+
+function module:McFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.mcFade .. " " .. ev.destName)
 	end
 end
 

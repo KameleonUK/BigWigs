@@ -2,6 +2,7 @@ local module, L = BigWigs:ModuleDeclaration("Blackwing Alchemist", "Blackwing La
 
 -- module variables
 module.revision = 30141
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.trashMod = true
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "fire", "firesay", "fireother", "firemark" }
@@ -36,7 +37,6 @@ L:RegisterTranslations("enUS", function()
 		firemark_desc = "Mark players suffering from Alchemist's Fire (note: engaging the next pack will clear the mark storage and prevent resetting marks)",
 
 
-		trigger_fire = "(.+) ...? afflicted by Alchemist's Fire",
 		msg_fire = "Get out of the raid! - Alchemist's Fire",
 		msg_fireOther = "Alchemist's Fire on %s",
 		bar_fire = "Alchemist's Fire",
@@ -58,10 +58,7 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "AfflictionEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "AfflictionEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "AfflictionEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "AfflictionEvent") -- for pets
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Alchemist's Fire", "FireEvent")
 
 	self:ThrottleSync(1, syncName.fire)
 end
@@ -75,12 +72,10 @@ end
 function module:OnDisengage()
 end
 
-function module:AfflictionEvent(msg)
-	local _, _, player = string.find(msg, L["trigger_fire"])
-	if player then
-		player = player == "You" and UnitName("player") or player
-		self:Sync(syncName.fire .. " " .. player)
-		return
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:FireEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.fire .. " " .. ev.destName)
 	end
 end
 
@@ -129,31 +124,31 @@ function module:Test()
 		{ time = 2, func = function()
 			local msg = raid1.." is afflicted by Alchemist's Fire."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Self
 		{ time = 10, func = function()
 			local msg = "You are afflicted by Alchemist's Fire."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Spread
 		{ time = 18, func = function()
 			local msg = raid1.." is afflicted by Alchemist's Fire."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 18, func = function()
 			local msg = raid2.." is afflicted by Alchemist's Fire."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 18, func = function()
 			local msg = raid3.." is afflicted by Alchemist's Fire."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- End of Test

@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Flame Imp", "Molten Core")
 
 module.revision = 30074
+module.combatLog = true -- deaths come from UNIT_DIED; a kill must not end the module (it times the respawn)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"respawn"}
 module.trashMod = true
@@ -40,6 +41,7 @@ local syncName = {
 local packDeadCount = 0
 
 function module:OnEnable()
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
 	self:ThrottleSync(30, syncName.dead)
@@ -47,7 +49,6 @@ end
 
 function module:OnSetup()
 	self.started = nil
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH")
 end
 
 function module:OnEngage()
@@ -60,13 +61,14 @@ end
 function module:CheckForWipe()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	if (msg == string.format(UNITDIESOTHER, "Flame Imp")) then
+-- combat log handlers; a Flame Imp death starts the pack respawn timer (synced, throttled to one per pack)
+function module:UnitDied(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.dead)
 	end
 end
 
-function module:Event(msg)
+function module:BossUnitDied(ev)
 end
 
 function module:BigWigs_RecvSync(sync, rest, nick)

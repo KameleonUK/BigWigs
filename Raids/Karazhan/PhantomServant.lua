@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Phantom Servant", "Karazhan")
 
 module.revision = 30023
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"phantomscream"}
 module.trashMod = true
@@ -17,8 +18,6 @@ L:RegisterTranslations("enUS", function() return {
 	phantomscream_name = "Phantom Scream Alert",
 	phantomscream_desc = "Warn for Phantom Scream",
 
-	trigger_phantomScreamYou = "You are afflicted by Phantom Scream.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_phantomScreamOther = "(.+) is afflicted by Phantom Scream.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	--trigger_phantomScreamFade = "Phantom Scream fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	
 	bar_phantomScreamCd = "Phantom Scream CD",
@@ -41,8 +40,6 @@ L:RegisterTranslations("zhCN", function() return {
     phantomscream_name = "幻影尖叫警报",
     phantomscream_desc = "幻影尖叫出现时进行警告",
 
-    trigger_phantomScreamYou = "You are afflicted by Phantom Scream.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_phantomScreamOther = "(.+) is afflicted by Phantom Scream.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     --trigger_phantomScreamFade = "Phantom Scream fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 
     bar_phantomScreamCd = "幻影尖叫冷却",
@@ -68,9 +65,7 @@ local syncName = {
 
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_phantomScreamYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_phantomScreamOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_phantomScreamOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Phantom Scream", "PhantomScreamEvent")
 	
 	--self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_phantomScreamFade
 	--self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_phantomScreamFade
@@ -90,56 +85,10 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
-	end
-end
-
-function module:Event(msg)
-	if msg == L["trigger_phantomScreamYou"] then
-		self:Sync(syncName.phantomScream2)-- .. " " .. UnitName("Player"))
-		
-	elseif string.find(msg, L["trigger_phantomScreamOther"]) then
-		local _,_, phantomScreamTarget, _ = string.find(msg, L["trigger_phantomScreamOther"])
-		self:Sync(syncName.phantomScream2)-- .. " " .. phantomScreamTarget)
-		
-	--elseif string.find(msg, L["trigger_phantomScreamFade"]) then
-	--	local _,_, phantomScreamFadeTarget, _ = string.find(msg, L["trigger_phantomScreamFade"])
-	--	if phantomScreamFadeTarget == "you" then phantomScreamFadeTarget = UnitName("Player") end
-	--	self:Sync(syncName.phantomScreamFade .. " " .. phantomScreamFadeTarget)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:PhantomScreamEvent(ev)
+	if BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.phantomScream2)
 	end
 end
 

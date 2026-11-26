@@ -1,6 +1,7 @@
 local module, L = BigWigs:ModuleDeclaration("Hakkar", "Zul'Gurub")
 
 module.revision = 30077
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "mc", "siphon", "enrage", -1, "aspectjeklik", "aspectvenoxis", "aspectmarli", "aspectthekal", "aspectarlokk", "bosskill" }
 
@@ -53,15 +54,10 @@ L:RegisterTranslations("enUS", function()
 		msg_enrage60 = "Enrage in 1 minute!",
 		msg_enrage10 = "Enrage in 10 seconds!",
 
-		trigger_causeInsanityYou = "You are afflicted by Cause Insanity.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_causeInsanityOther = "(.+) is afflicted by Cause Insanity.", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-		trigger_causeInsanityFade = "Cause Insanity fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
-		trigger_causeInsanityTotem = "Hakkar's Cause Insanity fails. Grounding Totem is immune.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
 		msg_causeInsanity = " MC",
 		bar_causeInsanity = " MC",
 		bar_causeInsanityCd = "MC CD",
 
-		trigger_bloodSiphon = "Hakkar gains Blood Siphon.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 		msg_bloodSiphon30 = "Blood Siphon in 30 seconds!",
 		bar_bloodSiphonDur = "Blood Siphon!",
 		bar_bloodSiphonCd = "Next Blood Siphon",
@@ -69,42 +65,25 @@ L:RegisterTranslations("enUS", function()
 		--unreliable, as if someone dies this will trigger
 		--trigger_bloodSiphonFade = "Blood Siphon fades from Hakkar.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 
-		trigger_poisonousBloodYou = "You are afflicted by Poisonous Blood.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_poisonousBloodOther = "(.+) is afflicted by Poisonous Blood.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_poisonousBloodFade = "Poisonous Blood fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_poisonousBlood = " Poisonous Blood",
 
 		--1.5k dmg + silence 5sec, 45yard
-		trigger_aspectOfJeklik = "afflicted by Aspect of Jeklik.", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_aspectOfJeklikResist = "Hakkar's Aspect of Jeklik", --guessing ???
 		bar_aspectOfJeklikCd = "Silence CD - Jeklik",
 		bar_aspectOfJeklikDur = "Silence! - Jeklik",
 
 		--30yard, poison volley, 10sec dot, 438dmg + 236 per 2sec, 1.6k dmg total
-		trigger_aspectOfVenoxis = "Hakkar's Aspect of Venoxis hit", --guessing ???
-		trigger_aspectOfVenoxisResist = "Hakkar's Aspect of Venoxis was resisted", --guessing ???
 		bar_aspectOfVenoxisCd = "Poison CD - Venoxis",
 
 		--6sec stun, single target
-		trigger_aspectOfMarliYou = "You are afflicted by Aspect of Mar'li.", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_aspectOfMarliOther = "(.+) is afflicted by Aspect of Mar'li.", --guessing CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_aspectOfMarliResist = "Hakkar's Aspect of Mar'li", --guessing ???
-		trigger_aspectOfMarliFade = "Aspect of Mar'li fades from (.+).", --guessing CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_aspectOfMarliCd = "Stun & ThreatDrop CD - Mar'li",
 		bar_aspectOfMarliDur = " Stunned - Mar'li",
 
 		--frenzy, 150% attack speed
-		trigger_aspectOfThekal = "Hakkar gains Aspect of Thekal.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-		trigger_aspectOfThekalFade = "Aspect of Thekal fades from Hakkar.", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_aspectOfThekalCd = "Frenzy CD - Thekal",
 		bar_aspectOfThekalDur = "Frenzy! - Thekal",
 		msg_aspectOfThekal = "Frenzy - Tranq!",
 
 		--2sec stun, single target
-		trigger_aspectOfArlokkYou = "You are afflicted by Aspect of Arlokk.", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-		trigger_aspectOfArlokkOther = "(.+) is afflicted by Aspect of Arlokk.", --guessing CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-		trigger_aspectOfArlokkResist = "Hakkar's Aspect of Arlokk", --guessing ???
-		trigger_aspectOfArlokkFade = "Aspect of Arlokk fades from (.+).", --guessing CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 		bar_aspectOfArlokkCd = "Stun & ThreatDrop CD - Arlokk",
 		bar_aspectOfArlokkDur = " Stunned - Arlokk",
 	}
@@ -157,15 +136,10 @@ L:RegisterTranslations("zhCN", function() return {
     msg_enrage60 = "1分钟后狂暴！",
     msg_enrage10 = "10秒后狂暴！",
 	
-	trigger_causeInsanityYou = "你受到了疯狂效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_causeInsanityOther = "(.+)受到了疯狂效果的影响。", --CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_causeInsanityFade = "疯狂效果从(.+)身上消失。", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
-	trigger_causeInsanityTotem = "哈卡的疯狂施放失败。根基图腾对此免疫。",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE
     msg_causeInsanity = "心控",
     bar_causeInsanity = "心控",
     bar_causeInsanityCd = "心控冷却",
 	
-	trigger_bloodSiphon = "哈卡获得了血液虹吸的效果。", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_bloodSiphon30 = "30秒后吸血！",
     bar_bloodSiphonDur = "吸血！",
     bar_bloodSiphonCd = "下一次吸血",
@@ -173,42 +147,25 @@ L:RegisterTranslations("zhCN", function() return {
 	--unreliable, as if someone dies this will trigger
 	--trigger_bloodSiphonFade = "Blood Siphon fades from Hakkar.", --CHAT_MSG_SPELL_AURA_GONE_OTHER
 	
-	trigger_poisonousBloodYou = "你受到了酸性血液效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_poisonousBloodOther = "(.+)受到了酸性血液效果的影响。", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_poisonousBloodFade = "酸性血液效果从(.+)身上消失了。", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_poisonousBlood = " 毒血",
 	
 	--1.5k dmg + silence 5sec, 45yard
-	trigger_aspectOfJeklik = "受到了耶克里克的守护效果的影响。", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_aspectOfJeklikResist = "哈卡的耶克里克的守护", --guessing ???
     bar_aspectOfJeklikCd = "沉默冷却 - 耶克里克",
     bar_aspectOfJeklikDur = "沉默！ - 耶克里克",
 	
 	--30yard, poison volley, 10sec dot, 438dmg + 236 per 2sec, 1.6k dmg total
-	trigger_aspectOfVenoxis = "哈卡的温诺希斯的守护击中", --guessing ???
-	trigger_aspectOfVenoxisResist = "哈卡的温诺希斯的守护被", --guessing ???
     bar_aspectOfVenoxisCd = "毒性冷却 - 温诺希斯",
 	
 	--6sec stun, single target
-	trigger_aspectOfMarliYou = "你受到了玛尔里的守护效果的影响。", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_aspectOfMarliOther = "(.+)受到了玛尔里的守护效果的影响。", --guessing CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_aspectOfMarliResist = "哈卡的玛尔里的守护", --guessing ???
-	trigger_aspectOfMarliFade = "玛尔里的守护效果从(.+)身上消失了。", --guessing CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_aspectOfMarliCd = "昏迷冷却 - 玛尔里",
     bar_aspectOfMarliDur = "昏迷 - 玛尔里",
 	
 	--frenzy, 150% attack speed
-	trigger_aspectOfThekal = "哈卡获得了塞卡尔的守护的效果。", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_aspectOfThekalFade = "塞卡尔的守护效果从哈卡身上消失。", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_aspectOfThekalCd = "狂暴冷却 - 塞卡尔",
     bar_aspectOfThekalDur = "狂暴！ - 塞卡尔",
     msg_aspectOfThekal = "狂暴 - 宁神射击！",
 
 	--2sec stun, single target
-	trigger_aspectOfArlokkYou = "You are afflicted by Aspect of Arlokk.", --guessing CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_aspectOfArlokkOther = "(.+) is afflicted by Aspect of Arlokk.", --guessing CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE //CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_aspectOfArlokkResist = "Hakkar's Aspect of Arlokk", --guessing ???
-	trigger_aspectOfArlokkFade = "Aspect of Arlokk fades from (.+).", --guessing CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_aspectOfArlokkCd = "哈卡隐身冷却 - 娅尔罗",
     bar_aspectOfArlokkDur = "隐身 - 娅尔罗",
     c_sonofhakkar = "哈卡之子",
@@ -322,21 +279,27 @@ function module:OnEnable()
 
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_engage, trigger_enrage
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_causeInsanityYou, trigger_poisonousBloodYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_causeInsanityOther, trigger_poisonousBloodOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_causeInsanityOther, trigger_poisonousBloodOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Cause Insanity", "InsanityEvent")
+	self:RegisterCombatLog("SPELL_MISSED", "Cause Insanity", "InsanityMissEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Cause Insanity", "InsanityFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Blood Siphon", "BloodSiphonEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Poisonous Blood", "PoisonousBloodEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Poisonous Blood", "PoisonousBloodFadeEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, "Aspect of Jeklik", "AspectJeklikEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Aspect of Venoxis", "AspectVenoxisEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Aspect of Mar'li", "AspectMarliEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Aspect of Mar'li", "AspectMarliFadeEvent")
+	self:RegisterCombatLog("SPELL_MISSED", "Aspect of Mar'li", "AspectMarliMissEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Aspect of Arlokk", "AspectArlokkEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Aspect of Arlokk", "AspectArlokkFadeEvent")
+	self:RegisterCombatLog("SPELL_MISSED", "Aspect of Arlokk", "AspectArlokkMissEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Aspect of Thekal", "AspectThekalEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Aspect of Thekal", "AspectThekalFadeEvent")
+	self:RegisterCombatLog("UNIT_DIED", nil, "UnitDied")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event") --trigger_causeInsanityOther, trigger_poisonousBloodOther
 
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_causeInsanityFade, trigger_poisonousBloodFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_causeInsanityFade, trigger_poisonousBloodFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_causeInsanityFade, trigger_poisonousBloodFade
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_causeInsanityTotem
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_causeInsanityTotem
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_bloodSiphon
 
 
 
@@ -363,7 +326,6 @@ end
 function module:OnSetup()
 	self.started = nil
 
-	self:RegisterEvent("CHAT_MSG_COMBAT_HOSTILE_DEATH") --snakeDies
 end
 
 function module:OnEngage()
@@ -397,10 +359,9 @@ end
 function module:OnDisengage()
 end
 
-function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
-	BigWigs:CheckForBossDeath(msg, self)
-
-	if (msg == string.format(UNITDIESOTHER, "Son of Hakkar")) and sonDeathTracking then
+-- UNIT_DIED: the Sons of Hakkar (Hakkar's own death comes from the core)
+function module:UnitDied(ev)
+	if ev.destName == "Son of Hakkar" and sonDeathTracking then
 		self:SonDead()
 	end
 end
@@ -413,84 +374,102 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_causeInsanityYou"] then
-		self:Sync(syncName.causeInsanity .. " " .. UnitName("Player"))
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+-- Cause Insanity (mind control): the player turns hostile, so only the name is checked
+function module:InsanityEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.causeInsanity .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_causeInsanityOther"]) then
-		local _, _, causeInsanityPerson, _ = string.find(msg, L["trigger_causeInsanityOther"])
-		self:Sync(syncName.causeInsanity .. " " .. causeInsanityPerson)
-
-	elseif msg == L["trigger_causeInsanityTotem"] then
+-- soaked by a Grounding Totem
+function module:InsanityMissEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destName and string.find(ev.destName, "Grounding Totem", 1, true) then
 		self:Sync(syncName.causeInsanity .. " " .. "Grounded!")
+	end
+end
 
-	elseif string.find(msg, L["trigger_causeInsanityFade"]) then
-		local _, _, causeInsanityFadePerson, _ = string.find(msg, L["trigger_causeInsanityFade"])
-		if causeInsanityFadePerson == "you" then
-			causeInsanityFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.causeInsanityFade .. " " .. causeInsanityFadePerson)
+function module:InsanityFadeEvent(ev)
+	if ev.destName then
+		self:Sync(syncName.causeInsanityFade .. " " .. ev.destName)
+	end
+end
 
-
-	elseif msg == L["trigger_bloodSiphon"] then
+function module:BloodSiphonEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.bloodSiphon)
+	end
+end
 
-		-- aspects
-	elseif string.find(msg, L["trigger_aspectOfJeklik"]) or string.find(msg, L["trigger_aspectOfJeklikResist"]) then
-		self:Sync(syncName.jeklik)
-
-	elseif string.find(msg, L["trigger_aspectOfVenoxis"]) or string.find(msg, L["trigger_aspectOfVenoxisResist"]) then
-		self:Sync(syncName.venoxis)
-
-
-	elseif msg == L["trigger_aspectOfMarliYou"] then
-		self:Sync(syncName.marli .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_aspectOfMarliOther"]) then
-		local _, _, marliPerson, _ = string.find(msg, L["trigger_aspectOfMarliOther"])
-		self:Sync(syncName.marli .. " " .. marliPerson)
-
-	elseif string.find(msg, L["trigger_aspectOfMarliFade"]) then
-		local _, _, marliFadePerson, _ = string.find(msg, L["trigger_aspectOfMarliFade"])
-		if marliFadePerson == "you" then
-			marliFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.marliFade .. " " .. marliFadePerson)
-
-	elseif string.find(msg, L["trigger_aspectOfMarliResist"]) then
-		self:Sync(syncName.marliAvoid)
-
-
-	elseif msg == L["trigger_aspectOfThekal"] then
-		self:Sync(syncName.thekalStart)
-	elseif msg == L["trigger_aspectOfThekalFade"] then
-		self:Sync(syncName.thekalStop)
-
-
-	elseif msg == L["trigger_aspectOfArlokkYou"] then
-		self:Sync(syncName.arlokk .. " " .. UnitName("Player"))
-
-	elseif string.find(msg, L["trigger_aspectOfArlokkOther"]) then
-		local _, _, arlokkPerson, _ = string.find(msg, L["trigger_aspectOfArlokkOther"])
-		self:Sync(syncName.arlokk .. " " .. arlokkPerson)
-
-	elseif string.find(msg, L["trigger_aspectOfArlokkFade"]) then
-		local _, _, arlokkFadePerson, _ = string.find(msg, L["trigger_aspectOfArlokkFade"])
-		if arlokkFadePerson == "you" then
-			arlokkFadePerson = UnitName("Player")
-		end
-		self:Sync(syncName.arlokkFade .. " " .. arlokkFadePerson)
-
-	elseif string.find(msg, L["trigger_aspectOfArlokkResist"]) then
-		self:Sync(syncName.arlokkAvoid)
-
-
-	elseif msg == L["trigger_poisonousBloodYou"] and self.db.profile.siphon and updateBars then
+function module:PoisonousBloodEvent(ev)
+	if self.db.profile.siphon and updateBars and BigWigs:IsGroupMember(ev.destFlags) then
 		self:PoisonousBlood()
-	elseif string.find(msg, L["trigger_poisonousBloodOther"]) and self.db.profile.siphon and updateBars then
-		self:PoisonousBlood()
-	elseif string.find(msg, L["trigger_poisonousBloodFade"]) and self.db.profile.siphon and updateBars then
+	end
+end
+
+function module:PoisonousBloodFadeEvent(ev)
+	if self.db.profile.siphon and updateBars and BigWigs:IsGroupMember(ev.destFlags) then
 		self:PoisonousBloodFade()
+	end
+end
+
+function module:AspectJeklikEvent(ev)
+	if ev.sourceName == self.translatedName or (ev.subevent == "SPELL_AURA_APPLIED" and BigWigs:IsGroupMember(ev.destFlags)) then
+		self:Sync(syncName.jeklik)
+	end
+end
+
+function module:AspectVenoxisEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.venoxis)
+	end
+end
+
+function module:AspectMarliEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.marli .. " " .. ev.destName)
+	end
+end
+
+function module:AspectMarliFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.marliFade .. " " .. ev.destName)
+	end
+end
+
+function module:AspectMarliMissEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.marliAvoid)
+	end
+end
+
+function module:AspectArlokkEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.arlokk .. " " .. ev.destName)
+	end
+end
+
+function module:AspectArlokkFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.arlokkFade .. " " .. ev.destName)
+	end
+end
+
+function module:AspectArlokkMissEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.arlokkAvoid)
+	end
+end
+
+function module:AspectThekalEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.thekalStart)
+	end
+end
+
+function module:AspectThekalFadeEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.thekalStop)
 	end
 end
 

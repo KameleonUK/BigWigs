@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Broodlord Lashlayer", "Blackwing Lair")
 
 module.revision = 30141
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"ms", "bw", "knock", "serrated", -1, "targeticon", "bosskill"}
 
@@ -31,28 +32,19 @@ L:RegisterTranslations("enUS", function() return {
 	
 	trigger_engage = "None of your kind should be here! You've doomed only yourselves!",
 	
-	trigger_msEvade = "Broodlord Lashlayer's Mortal Strike was", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_msEvade = "Mortal Strike was Dodged!",
 	
-	trigger_msYou = "You are afflicted by Mortal Strike.", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_msOther = "(.+) is afflicted by Mortal Strike.", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_msFade = "Mortal Strike fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_msCd = "Mortal Strike CD",
 	bar_msSoon = "Mortal Strike Soon...",
 	bar_msDur = " Mortal Strike",
 	msg_ms = " Mortal Strike",
 	
-	trigger_bw = "Broodlord Lashlayer's Blast Wave", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_bwCd = "Blast Wave CD",
 	bar_bwSoon = "Blast Wave Soon...",
 	
-	trigger_knock = "Broodlord Lashlayer's Knock Away", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_knockCd = "Knock Away CD",
 	bar_knockSoon = "Knock Away Soon...",
 	
-	trigger_serratedYou = "You are afflicted by Serrated Wound", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_serratedOther = "(.+) is afflicted by Serrated Wound", --CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_serratedFade = "Serrated Wound fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_serratedDur = ">%s< bleeding",
 } end )
 
@@ -104,17 +96,15 @@ module:RegisterYellEngage(L["trigger_engage"])
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_msYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_msOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_msOther
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {24573, "Mortal Strike"}, "MortalStrikeEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {24573, "Mortal Strike"}, "MortalStrikeFadeEvent")
+	self:RegisterCombatLog("SPELL_MISSED", {24573, "Mortal Strike"}, "MortalStrikeMissEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {23331, "Blast Wave"}, "BlastWaveEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, {18670, "Knock Away"}, "KnockAwayEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Serrated Wound", "SerratedEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Serrated Wound", "SerratedFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_msFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_msFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_msFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_bw, trigger_knock, trigger_msEvade
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_bw, trigger_knock, trigger_msEvade
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_bw, trigger_knock, trigger_msEvade
 	
 	
 	self:ThrottleSync(3, syncName.ms)
@@ -160,44 +150,47 @@ function module:BroodlordTarget()
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_msYou"] then
-		self:Sync(syncName.ms .. " "..UnitName("player"))
-	
-	elseif string.find(msg, L["trigger_msOther"]) then
-		local _,_,msPerson, _ = string.find(msg, L["trigger_msOther"])
-		self:Sync(syncName.ms .. " "..msPerson)
-	
-	elseif string.find(msg, L["trigger_msFade"]) then
-		local _,_,msFadePerson, _ = string.find(msg, L["trigger_msFade"])
-		if msFadePerson == "you" then msFadePerson = UnitName("Player") end
-		self:Sync(syncName.msFade .. " "..msFadePerson)
-		
-	elseif string.find(msg, L["trigger_msEvade"]) then
-		self:Sync(syncName.ms .. " ".."msEvade")
-	
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:MortalStrikeEvent(ev)
+	if ev.destName and ev.sourceName == self.translatedName then
+		self:Sync(syncName.ms .. " " .. ev.destName)
+	end
+end
 
-	elseif string.find(msg, L["trigger_bw"]) then
+function module:MortalStrikeFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.msFade .. " " .. ev.destName)
+	end
+end
+
+-- dodged, parried, blocked...: the Mortal Strike still went out
+function module:MortalStrikeMissEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.ms .. " " .. "msEvade")
+	end
+end
+
+function module:BlastWaveEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.bw)
-		
-	elseif string.find(msg, L["trigger_knock"]) then
+	end
+end
+
+function module:KnockAwayEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.knock)
-		
-	elseif string.find(msg, L["trigger_serratedYou"]) then
-		self:Sync(syncName.serrated .. " "..UnitName("player"))
-		
-	elseif string.find(msg, L["trigger_serratedOther"]) then
-		local _,_,serratedPerson = string.find(msg, L["trigger_serratedOther"])
-		if serratedPerson then
-			self:Sync(syncName.serrated .. " "..serratedPerson)
-		end
-		
-	elseif string.find(msg, L["trigger_serratedFade"]) then
-		local _,_,serratedFadePerson = string.find(msg, L["trigger_serratedFade"])
-		if serratedFadePerson then
-			if serratedFadePerson == "you" then serratedFadePerson = UnitName("Player") end
-			self:Sync(syncName.serratedFade .. " "..serratedFadePerson)
-		end
+	end
+end
+
+function module:SerratedEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.serrated .. " " .. ev.destName)
+	end
+end
+
+function module:SerratedFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.serratedFade .. " " .. ev.destName)
 	end
 end
 

@@ -3,6 +3,7 @@ local print = print or function(t) if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME
 
 -- module variables
 module.revision = 30141
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = { "charge", "chargemark", "precharge", "chemicalRage", "acid", "transmute", "tongues", "bosskill" }
 
@@ -56,15 +57,11 @@ L:RegisterTranslations("enUS", function()
 		warn_charge = "HIDE",
 		msg_preCharge = "Charge soon!",
 
-		trigger_concussion = "Ezzel Darkbrewer .+ Concussion%.",
 		msg_chemicalRage = "Chemical Rage - 80% damage reduction until Ezzel hits a pillar",
 		bar_chemicalRage = "Damage Reduction active",
 
-		trigger_acid = "You are afflicted by Acid Bomb",
-		trigger_acidTick = "You suffer (.+) damage from Ezzel Darkbrewer's Acid Bomb",
 		warn_acid = "ACID - MOVE",
 
-		trigger_transmute = "Ezzel Darkbrewer begins to cast Transmute to Gold",
 		bar_transmute = "Kill Boss",
 		warn_tongues = "CoT missing!",
 	}
@@ -101,13 +98,11 @@ local guid = {
 local nextHealthThreshold = 80
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "AfflictionEvent")
+	self:RegisterCombatLog({"SPELL_AURA_APPLIED", "SPELL_PERIODIC_DAMAGE"}, "Acid Bomb", "AcidEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", "Transmute to Gold", "TransmuteEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Concussion", "ConcussionEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "CastEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_BUFF", "CastEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "EnemyDebuffEvent")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "EnemyDebuffEvent")
 	
 	self:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE")
 
@@ -132,21 +127,22 @@ end
 function module:OnDisengage()
 end
 
-function module:AfflictionEvent(msg)
-	if self.db.profile.acid and (string.find(msg, L["trigger_acid"]) or string.find(msg, L["trigger_acidTick"]) )then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:AcidEvent(ev)
+	if self.db.profile.acid and ev.destGUID and ev.destGUID == UnitGUID("player") then
 		self:Sound("Info")
 		self:WarningSign(icon.acid, 1, false, L["warn_acid"])
 	end
 end
 
-function module:CastEvent(msg)
-	if string.find(msg, L["trigger_transmute"]) then
+function module:TransmuteEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.transmute)
 	end
 end
 
-function module:EnemyDebuffEvent(msg)
-	if string.find(msg, L["trigger_concussion"]) then
+function module:ConcussionEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.concussion)
 	end
 end
@@ -229,17 +225,17 @@ function module:Test()
 		{ time = 2, func = function()
 			local msg = "You are afflicted by Acid Bomb"
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 3, func = function()
 			local msg = "You suffer 450 Nature damage from Ezzel Darkbrewer's Acid Bomb."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 4, func = function()
 			local msg = "You suffer 0 Nature damage from Ezzel Darkbrewer's Acid Bomb. (405 absorbed)"
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Charge
@@ -255,7 +251,7 @@ function module:Test()
 		{ time = 17, func = function()
 			local msg = "Ezzel Darkbrewer is afflicted by Concussion."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 		{ time = 21, func = function()
 			print("Test: boss at 54% HP")
@@ -269,7 +265,7 @@ function module:Test()
 		{ time = 31, func = function()
 			local msg = "Ezzel Darkbrewer gains Concussion."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Transmute
@@ -280,7 +276,7 @@ function module:Test()
 		{ time = 34, func = function()
 			local msg = "Ezzel Darkbrewer begins to cast Transmute to Gold."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- End of Test

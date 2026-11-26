@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Core Hound", "Molten Core")
 
 module.revision = 30074
+module.combatLog = true -- no combat log triggers (the smoulder emote drives it); a kill must not end the module
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"respawn","despawn"}
 module.trashMod = true
@@ -86,7 +87,8 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
+-- each hound "dies" and gets back up, so a death never ends the module
+function module:BossUnitDied(ev)
 end
 
 function module:CHAT_MSG_MONSTER_EMOTE(msg)
@@ -94,9 +96,6 @@ function module:CHAT_MSG_MONSTER_EMOTE(msg)
 		self:Sync(syncName.dead)
 		self:Sync(syncName.despawn)
 	end
-end
-
-function module:Event(msg)
 end
 
 function module:BigWigs_RecvSync(sync, rest, nick)

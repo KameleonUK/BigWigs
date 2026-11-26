@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Golemagg the Incinerator", "Molten Core")
 
 module.revision = 30075
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"enrage", "earthquake", "magma", "bosskill"}
 module.wipemobs = {"Core Rager"}
@@ -22,14 +23,11 @@ L:RegisterTranslations("enUS", function() return {
 	magma_desc = "Warn for Magma Splash",
 	
 	
-	trigger_enrage = "Golemagg the Incinerator gains Enrage.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_enrage = "Golemagg is Enraged - Casting Earthquakes!",
 	msg_enrageSoon = "Enrage Soon (at 10%) - Earthquake Soon",
 	
-	trigger_earthquake = "Golemagg the Incinerator's Earthquake", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_earthquake = "Earthquake",
 	
-	trigger_magmaSplash = "You are afflicted by Magma Splash %((.+)%).", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	msg_magmaSplash = "Warning - High Magma Splash Stacks: ",
 } end)
 
@@ -57,13 +55,11 @@ function module:OnEnable()
 	
 	self:RegisterEvent("UNIT_HEALTH")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_enrage
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {19953, "Enrage"}, "EnrageEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {19798, "Earthquake"}, "EarthquakeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", {13879, "Magma Splash"}, "MagmaSplashEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_earthquake
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_earthquake
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_earthquake
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_magmaSplash
 	
 	
 	self:ThrottleSync(10, syncName.enrageSoon)
@@ -95,19 +91,23 @@ function module:UNIT_HEALTH(msg)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_enrage"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
-	
-	elseif string.find(msg, L["trigger_earthquake"]) then
+	end
+end
+
+function module:EarthquakeEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.earthquake)
-	
-	elseif string.find(msg, L["trigger_magmaSplash"]) then
-		local _,_, stacks, _ = string.find(msg, L["trigger_magmaSplash"])
-		local stacksNum = tonumber(stacks)
-		if stacksNum >= 12 then
-			self:MagmaSplash(stacksNum)
-		end
+	end
+end
+
+-- your own Magma Splash stacks
+function module:MagmaSplashEvent(ev)
+	if ev.destGUID and ev.destGUID == UnitGUID("player") and ev.amount and ev.amount >= 12 then
+		self:MagmaSplash(ev.amount)
 	end
 end
 

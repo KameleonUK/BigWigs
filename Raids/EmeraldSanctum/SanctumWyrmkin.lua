@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Sanctum Wyrmkin", "Emerald Sanctum")
 
 module.revision = 30020
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wyrmkinsvenom"}
 module.trashMod = true
@@ -17,9 +18,6 @@ L:RegisterTranslations("enUS", function() return {
 	wyrmkinsvenom_name = "Wyrmkins Venom Alert",
 	wyrmkinsvenom_desc = "Warn for Wyrmkins Venom",
 
-	trigger_wyrmkinsVenomYou = "You are afflicted by Wyrmkins Venom.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_wyrmkinsVenomFade = "Wyrmkins Venom fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY
-	trigger_wyrmkinsVenomOther = "(.+) is afflicted by Wyrmkins Venom.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	
 	bar_wyrmkinsVenom = " Venom",
 	
@@ -41,9 +39,6 @@ L:RegisterTranslations("zhCN", function() return {
     wyrmkinsvenom_name = "龙族毒液警报",
     wyrmkinsvenom_desc = "龙族毒液出现时进行警告",
 
-    trigger_wyrmkinsVenomYou = "你受到了龙族毒液效果的影响。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_wyrmkinsVenomFade = "龙族毒液效果从(.+)身上消失了。",--CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY
-    trigger_wyrmkinsVenomOther = "(.+)受到了龙族毒液效果的影响。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     
     bar_wyrmkinsVenom = " 中了毒液（驱毒）！！！",
     
@@ -65,14 +60,10 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_wyrmkinsVenomYou
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", {56503, "Wyrmkins Venom"}, "VenomEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", {56503, "Wyrmkins Venom"}, "VenomFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_wyrmkinsVenomFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_wyrmkinsVenomFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_wyrmkinsVenomFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_wyrmkinsVenomOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_wyrmkinsVenomOther
 	
 	self:ThrottleSync(0, syncName.wyrmkinsVenomOn)
 	self:ThrottleSync(0, syncName.wyrmkinsVenomOff)
@@ -88,56 +79,16 @@ end
 function module:OnDisengage()
 end
 
-function module:CheckForBossDeath(msg)
-	if msg == string.format(UNITDIESOTHER, self:ToString())
-		or msg == string.format(L["You have slain %s!"], self.translatedName) then
-		local function IsBossInCombat()
-			local t = module.enabletrigger
-			if not t then return false end
-			if type(t) == "string" then t = {t} end
-
-			if UnitExists("target") and UnitAffectingCombat("target") then
-				local target = UnitName("target")
-				for _, mob in pairs(t) do
-					if target == mob then
-						return true
-					end
-				end
-			end
-
-			local num = GetNumRaidMembers()
-			for i = 1, num do
-				local raidUnit = string.format("raid%starget", i)
-				if UnitExists(raidUnit) and UnitAffectingCombat(raidUnit) then
-					local target = UnitName(raidUnit)
-					for _, mob in pairs(t) do
-						if target == mob then
-							return true
-						end
-					end
-				end
-			end
-			return false
-		end
-
-		if not IsBossInCombat() then
-			self:SendBossDeathSync()
-		end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:VenomEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.wyrmkinsVenomOn .. " " .. ev.destName)
 	end
 end
 
-function module:Event(msg)
-	if msg == L["trigger_wyrmkinsVenomYou"] then
-		self:Sync(syncName.wyrmkinsVenomOn .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_wyrmkinsVenomFade"]) then
-		local _,_, wyrmkinsVenomOffTarget, _ = string.find(msg, L["trigger_wyrmkinsVenomFade"])
-		if wyrmkinsVenomOffTarget == "you" then wyrmkinsVenomOffTarget = UnitName("Player") end
-		self:Sync(syncName.wyrmkinsVenomOff .. " " .. wyrmkinsVenomOffTarget)
-	
-	elseif string.find(msg, L["trigger_wyrmkinsVenomOther"]) then
-		local _,_, wyrmkinsVenomOnTarget, _ = string.find(msg, L["trigger_wyrmkinsVenomOther"])
-		self:Sync(syncName.wyrmkinsVenomOn .. " " .. wyrmkinsVenomOnTarget)
+function module:VenomFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.wyrmkinsVenomOff .. " " .. ev.destName)
 	end
 end
 

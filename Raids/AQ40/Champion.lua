@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Qiraji Champion", "Ahn'Qiraj")
 
 module.revision = 30067
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"fear"}
 module.trashMod = true
@@ -17,9 +18,6 @@ L:RegisterTranslations("enUS", function() return {
 	fear_desc = "Warn for Intimidating Shout",
 	
 	
-	trigger_fear = "afflicted by Intimidating Shout", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-	trigger_fear2 = "Qiraji Champion's Intimidating Shout was resisted", --to be confirmed
-	trigger_fear3 = "Qiraji Champion's Intimidating Shout fail", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
 	bar_fear = "Intimidating Shout CD",
 } end )
 
@@ -34,9 +32,6 @@ L:RegisterTranslations("zhCN", function() return {
     fear_desc = "破胆怒吼出现时进行警告",
 
 
-    trigger_fear = "afflicted by Intimidating Shout", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
-    trigger_fear2 = "Qiraji Champion's Intimidating Shout was resisted", --to be confirmed
-    trigger_fear3 = "Qiraji Champion's Intimidating Shout fail", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE
     bar_fear = "破胆怒吼 CD",
 } end )
 local timer = {
@@ -53,15 +48,9 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")
+	self:RegisterCombatLog({"SPELL_AURA_APPLIED", "SPELL_MISSED"}, "Intimidating Shout", "FearEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE", "Event")
 	
 	
 	self:ThrottleSync(15, syncName.fear)
@@ -77,8 +66,9 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_fear"]) or string.find(msg, L["trigger_fear2"]) or string.find(msg, L["trigger_fear3"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:FearEvent(ev)
+	if ev.sourceName == self.translatedName or (ev.subevent == "SPELL_AURA_APPLIED" and BigWigs:IsGroupMember(ev.destFlags)) then
 		self:Sync(syncName.fear)
 	end
 end

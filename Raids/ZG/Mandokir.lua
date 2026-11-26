@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Bloodlord Mandokir", "Zul'Gurub")
 
 module.revision = 30078
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.wipemobs = {"Ohgan"}
 module.toggleoptions = {"gaze", "cancelaction", -1, "whirlwind", "charge", "enrage", "sunder", -1, "levelup", "bosskill"}
@@ -41,27 +42,20 @@ L:RegisterTranslations("enUS", function() return {
 	trigger_engage = "I'll feed your souls to Hakkar himself!", --CHAT_MSG_MONSTER_YELL
 	
 	trigger_gaze = "(.+)! I'm watching you!", --CHAT_MSG_MONSTER_YELL
-	trigger_gazeFade = "Threatening Gaze fades from (.+).", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_gazeCd = "Threatening Gaze CD",
 	bar_gazeDur = " Gaze!",
 	msg_gaze = "Threatening Gaze - Stop all Actions ",
 	
-	trigger_whirlwind = "Bloodlord Mandokir gains Whirlwind.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	bar_whirlwindCd = "Whirlwind CD",
 	bar_whirlwindCast = "Casting Whirlwind!",
 	
-	trigger_charge = "Bloodlord Mandokir's Charge", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_chargeCd = "Charge CD",
 	
 	
-	trigger_enrage = "Bloodlord Mandokir gains Enrage.", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_enrageFade = "Enrage fades from Bloodlord Mandokir.", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
 	bar_enrage = "Enrage",
 	msg_enrage = "You killed Ohgan - Mandokir is Enraged!",
 	msg_enrageFade = "Mandokir is no longer Enraged!",
 	
-	trigger_sunderYou = "You are afflicted by Sunder Armor %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_sunderOther = "(.+) is afflicted by Sunder Armor %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	bar_sunder = " Sunders",
 	msg_sunderHigh = " Sunder Stacks - Seek Replacement!",
 	
@@ -107,26 +101,19 @@ L:RegisterTranslations("zhCN", function() return {
 	trigger_engage = "我会把你们的灵魂喂给哈卡本人！", --CHAT_MSG_MONSTER_YELL
 	
 	trigger_gaze = "(.+)！我在看着你！", --CHAT_MSG_MONSTER_YELL
-	trigger_gazeFade = "威慑凝视效果从(.+)身上消失了。", --CHAT_MSG_SPELL_AURA_GONE_SELF // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_OTHER
     bar_gazeCd = "威慑凝视冷却",
     bar_gazeDur = " 凝视！",
     msg_gaze = "威慑凝视 - 停止所有动作",
 	
-	trigger_whirlwind = "血领主曼多基尔获得了旋风斩的效果。", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     bar_whirlwindCd = "旋风斩冷却",
     bar_whirlwindCast = "施放旋风斩！",
 	
-	trigger_charge = "血领主曼多基尔的冲锋击中", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_chargeCd = "冲锋冷却",
 	
 	
-	trigger_enrage = "血领主曼多基尔获得了激怒的效果。", --guessing CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
-	trigger_enrageFade = "激怒效果从血领主曼多基尔身上消失。", --guessing CHAT_MSG_SPELL_AURA_GONE_OTHER
     msg_enrage = "你杀死了奥根 - 血领主曼多基尔激怒了！",
     msg_enrageFade = "血领主曼多基尔不再激怒！",
 	
-	trigger_sunderYou = "你受到了破甲效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_sunderOther = "(.+)受到了破甲效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     bar_sunder = " 破甲",
     msg_sunderHigh = " 破甲层数高 - 换坦！",
 	
@@ -193,19 +180,15 @@ function module:OnEnable()
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL") --trigger_engage, trigger_gaze
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event") --trigger_gazeFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event") --trigger_gazeFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event") --trigger_gazeFade, trigger_enrageFade
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Threatening Gaze", "GazeFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Whirlwind", "WhirlwindEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Charge", "ChargeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Enrage", "EnrageFadeEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", "Sunder Armor", "SunderEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_whirlwind, trigger_enrage
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_sunderYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_sunderOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_sunderOther
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_charge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_charge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_charge
 	
 	
 	self:ThrottleSync(5, syncName.gaze)
@@ -259,35 +242,41 @@ function module:CHAT_MSG_MONSTER_YELL(msg)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_gazeFade"]) then
-		local _,_,gazeFadePlayer,_ = string.find(msg, L["trigger_gazeFade"])
-		if gazeFadePlayer == "you" then gazeFadePlayer = UnitName("Player") end
-		self:Sync(syncName.gazeFade .. " " .. gazeFadePlayer)
-	
-	elseif msg == L["trigger_whirlwind"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:GazeFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.gazeFade .. " " .. ev.destName)
+	end
+end
+
+function module:WhirlwindEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.whirlwind)
+	end
+end
 
-	elseif string.find(msg, L["trigger_charge"]) then
+function module:ChargeEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.charge)
-	
-	elseif msg == L["trigger_enrage"] then
-		self:Sync(syncName.enrage)
-	elseif msg == L["trigger_enrageFade"] then
-		self:Sync(syncName.enrageFade)
+	end
+end
 
-	elseif string.find(msg, L["trigger_sunderYou"]) and fightningMandokir then
-		local _,_,sunderQty,_ = string.find(msg, L["trigger_sunderYou"])
-		local sunderPlayer = UnitName("Player")
-		local sunderPlayerAndSunderQty = sunderPlayer .. " " .. sunderQty
-		self:Sync(syncName.sunder.." "..sunderPlayerAndSunderQty)
-		
-	elseif string.find(msg, L["trigger_sunderOther"]) and fightningMandokir then
-		local _,_,sunderPlayer,sunderQty = string.find(msg, L["trigger_sunderOther"])
-		if sunderPlayer ~= "Bloodlord Mandokir" and sunderPlayer ~= "Ohgan" then
-			local sunderPlayerAndSunderQty = sunderPlayer .. " " .. sunderQty
-			self:Sync(syncName.sunder.." "..sunderPlayerAndSunderQty)
-		end
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.enrage)
+	end
+end
+
+function module:EnrageFadeEvent(ev)
+	if ev.destName == self.translatedName then
+		self:Sync(syncName.enrageFade)
+	end
+end
+
+-- Mandokir's Sunder Armor stacks on a raid member
+function module:SunderEvent(ev)
+	if fightningMandokir and ev.destName and ev.amount and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.sunder .. " " .. ev.destName .. " " .. ev.amount)
 	end
 end
 

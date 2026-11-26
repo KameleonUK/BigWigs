@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Ancient Core Hound", "Molten Core")
 
 module.revision = 30074
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"bars"}
 
@@ -13,9 +14,6 @@ L:RegisterTranslations("enUS", function() return {
 	bars_desc = "Toggles showing bars for timers.",
 	
 	
-	trigger_debuff = "afflicted by (.+) ", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_debuffFail = "Ancient Core Hound's (.+) fails.", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_debuffResist = "Ancient Core Hound's (.+) was resisted by", --CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_debuff = "Debuff",
 	
 	msg_ancientDread = "Ancient Dread - Dispel!",
@@ -47,9 +45,6 @@ L:RegisterTranslations("zhCN", function() return {
     bars_desc = "切换显示计时条的状态。",
 
 
-	trigger_debuff = "你受到了(.+)效果的影响。", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_debuffFail = ".*的(.+)施放失败。", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_debuffResist = ".*的(.+)被.*抵抗了。", --CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_debuff = "Debuff",
 
     msg_ancientDread = "上古恐慌 - 驱散！",
@@ -101,13 +96,9 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_debuff
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_debuff
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_debuff
+	local debuffs = {19364, 19365, 19366, 19367, 19369, 19372, L["s_groundstomp"], L["s_ancientdread"], L["s_cauterizingflames"], L["s_witheringheat"], L["s_ancientdespair"], L["s_ancienthysteria"]}
+	self:RegisterCombatLog({"SPELL_AURA_APPLIED", "SPELL_MISSED", "SPELL_CAST_SUCCESS"}, debuffs, "DebuffEvent")
 
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_debuffFail
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_debuffFail, trigger_debuffResist
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_debuffFail, trigger_debuffResist
 
 
 	self:ThrottleSync(2, syncName.debuff)
@@ -136,24 +127,13 @@ local function IsTrackedDebuff(name)
 		or name == L["s_ancienthysteria"]
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_debuff"]) then
-		local _,_, debuff, _ = string.find(msg, L["trigger_debuff"])
-		if IsTrackedDebuff(debuff) then
-			self:Sync(syncName.debuff .. " " .. debuff)
-		end
-
-	elseif string.find(msg, L["trigger_debuffFail"]) then
-		local _,_, debuff, _ = string.find(msg, L["trigger_debuffFail"])
-		if IsTrackedDebuff(debuff) then
-			self:Sync(syncName.debuff .. " " .. debuff)
-		end
-
-	elseif string.find(msg, L["trigger_debuffResist"]) then
-		local _,_, debuff, _ = string.find(msg, L["trigger_debuffResist"])
-		if IsTrackedDebuff(debuff) then
-			self:Sync(syncName.debuff .. " " .. debuff)
-		end
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:DebuffEvent(ev)
+	if ev.subevent ~= "SPELL_AURA_APPLIED" and ev.sourceName ~= self.translatedName then
+		return
+	end
+	if ev.spellName and IsTrackedDebuff(ev.spellName) then
+		self:Sync(syncName.debuff .. " " .. ev.spellName)
 	end
 end
 

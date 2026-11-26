@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Firemaw", "Blackwing Lair")
 
 module.revision = 30141
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wingbuffet", "shadowflame", "sfzonealert", "sfzonebar", "sfexplosion", "flamebuffet", "stacks", "bosskill"}
 
@@ -48,25 +49,20 @@ L:RegisterTranslations("enUS", function() return {
 	stacks_desc = "Warn for High Flame Buffet Stacks",
 	
 	
-	trigger_wingBuffet = "Firemaw begins to cast Wing Buffet.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_wingBuffetCast = "Casting Wing Buffet!",
 	bar_wingBuffetCd = "Wing Buffet CD",
 	msg_wingBuffetCast = "Casting Wing Buffet!",
 	msg_wingBuffetSoon = "Wing Buffet in 2 seconds - Taunt now!",
 	
-	trigger_shadowFlameCast = "Firemaw begins to cast Shadow Flame.", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE - seems to no longer appear in logs since 1.18
 	bar_shadowFlameCast = "Casting Shadow Flame!",
 	msg_shadowFlameCast = "Casting Shadow Flame!",
-	trigger_shadowFlameHit = "Firemaw's Shadow Flame hits", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_shadowFlameCd = "Shadow Flame CD",
 	
 	msg_sfzone = "Look for new Floor Zones!",
 	bar_sfzoneFind = "find new Zone(s)",
 	bar_sfzone = "soak Floor Zone(s)",
-	trigger_sfexplosion = "Shadowflame Jet's Shadowflame Explosion", --CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // etc
 	warn_sfexplosion = "Unsoaked Zone!",
 	
-	trigger_flameBuffet = "Firemaw's Flame Buffet", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 		--Firemaw's Flame Buffet fails. (.+) is immune.
 		--Firemaw's Flame Buffet was resisted by (.+).
 		--Firemaw's Flame Buffet was resisted.
@@ -75,7 +71,6 @@ L:RegisterTranslations("enUS", function() return {
 		--You absorb Firemaw's Flame Buffet.
 	bar_flameBuffet = "Flame Buffet",
 	
-	trigger_flameBuffetYou = "You are afflicted by Flame Buffet %((.+)%).", --CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
 	msg_flameBuffetYou = " Flame Buffet Stacks - Consider losing your stacks",
 } end)
 
@@ -126,15 +121,14 @@ local zoneWarned = false
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_flameBuffet, trigger_sfexplosion, trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_flameBuffet, trigger_sfexplosion, trigger_shadowFlameHit
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_wingBuffet, trigger_shadowFlameCast, trigger_flameBuffet, trigger_sfexplosion, trigger_shadowFlameHit
+	self:RegisterCombatLog("SPELL_CAST_START", {23339, "Wing Buffet"}, "WingBuffetEvent")
+	self:RegisterCombatLog("SPELL_CAST_START", {22539, "Shadow Flame"}, "ShadowFlameCastEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, {22539, "Shadow Flame"}, "ShadowFlameHitEvent")
+	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_MISSED"}, "Shadowflame Explosion", "ExplosionEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, {23341, "Flame Buffet"}, "FlameBuffetEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", {23341, "Flame Buffet"}, "FlameBuffetStacksEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_flameBuffetYou
 	
-	if SUPERWOW_VERSION or SetAutoloot then
-		self:RegisterEvent("UNIT_CASTEVENT")
-	end
 	
 	self:ThrottleSync(3, syncName.wingBuffet)
 	self:ThrottleSync(3, syncName.shadowFlameCast)
@@ -167,36 +161,41 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if msg == L["trigger_wingBuffet"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WingBuffetEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.wingBuffet)
-	
-	elseif msg == L["trigger_shadowFlameCast"] then
-		self:Sync(syncName.shadowFlameCast)
-	
-	elseif string.find(msg, L["trigger_shadowFlameHit"]) then
-		self:Sync(syncName.shadowFlameHit)
-	
-	elseif string.find(msg, L["trigger_sfexplosion"]) then
-		self:Sync(syncName.sfexplosion)
-	
-	elseif string.find(msg, L["trigger_flameBuffet"]) then
-		self:Sync(syncName.flameBuffet)
-	
-	elseif string.find(msg, L["trigger_flameBuffetYou"]) and self.db.profile.stacks then
-		local _,_,stacks,_ = string.find(msg, L["trigger_flameBuffetYou"])
-		local stacksNum = tonumber(stacks)
-		if stacksNum >= 8 then
-			self:FlameBuffetStacks(stacksNum)
-		end
 	end
 end
 
-function module:UNIT_CASTEVENT(caster,target,action,spell,castTime)
-	if spell == spellId.shadowFlame and action == "START" then
+function module:ShadowFlameCastEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.shadowFlameCast)
-		self:DelayedSync(castTime/1000, syncName.shadowFlameHit)
-		return
+	end
+end
+
+function module:ShadowFlameHitEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.shadowFlameHit)
+	end
+end
+
+function module:ExplosionEvent(ev)
+	if ev.sourceName == "Shadowflame Jet" then
+		self:Sync(syncName.sfexplosion)
+	end
+end
+
+function module:FlameBuffetEvent(ev)
+	if ev.sourceName == self.translatedName then
+		self:Sync(syncName.flameBuffet)
+	end
+end
+
+-- your own Flame Buffet stacks
+function module:FlameBuffetStacksEvent(ev)
+	if self.db.profile.stacks and ev.destGUID and ev.destGUID == UnitGUID("player") and ev.amount and ev.amount >= 8 then
+		self:FlameBuffetStacks(ev.amount)
 	end
 end
 
@@ -283,7 +282,7 @@ function module:Test() -- missing Wing Buffet and Flame Buffet
 			--[[ defunct
 			local msg = "Firemaw begins to cast Shadow Flame."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 			]]--
 		end },
 
@@ -291,48 +290,48 @@ function module:Test() -- missing Wing Buffet and Flame Buffet
 		{ time = 18, func = function()
 			local msg = "Firemaw's Shadow Flame hits "..raid1.." for 3319 Shadow damage."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- First Explosion
 		{ time = 22, func = function()
 			local msg = "Shadowflame Jet's Shadowflame Explosion hits "..raid2.." for 601 Fire damage. (200 resisted)"
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Second Explosion
 		{ time = 24, func = function()
 			local msg = "Shadowflame Jet's Shadowflame Explosion hits you for 374 Fire damage. (325 absorbed)"
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Third Explosion
 		{ time = 30, func = function()
 			local msg = "Shadowflame Jet's Shadowflame Explosion hits "..raid1.." for 739 Fire damage."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- Second Cast Event
 		{ time = 31.8, func = function()
 			print("Test: Shadow Flame cast event")
-			self:UNIT_CASTEVENT("Firemaw","Tester","START",22539,2000)
+			BigWigs:TestCombatLog("SPELL_CAST_START", "Firemaw", nil, 22539, "Shadow Flame")
 		end },
 
 		-- Second Hit
 		{ time = 33.5, func = function()
 			local msg = "Firemaw's Shadow Flame hits you for 3319 Shadow damage."
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- First Explosion
 		{ time = 37.5, func = function()
 			local msg = "Shadowflame Jet's Shadowflame Explosion hits "..raid2.." for 186 Fire damage. (556 resisted)"
 			print("Test: " .. msg)
-			self:TriggerEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", msg)
+			BigWigs:TestCombatLogText(msg)
 		end },
 
 		-- End of Test

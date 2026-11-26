@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Renataki", "Zul'Gurub")
 
 module.revision = 30067
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"vanish", "enrage", "gouge", "bosskill"}
 
@@ -25,14 +26,11 @@ L:RegisterTranslations("enUS", function() return {
 	msg_vanish = "Renataki has Vanished!",
 	bar_nextReturn = "Return",
 	
-	trigger_vanishFade = "Unknown's Ambush", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_vanishFade = "Renataki Appears!",
 	bar_nextVanish = "Vanish",
 	
-	trigger_enrage = "Renataki gains Enrage.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_enrage = "Enrage!",
 	
-	trigger_gouge = "Renataki's Gouge", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_gouge = "Gouge CD",	
 } end )
 
@@ -59,14 +57,11 @@ L:RegisterTranslations("zhCN", function() return {
     msg_vanish = "雷纳塔基已经消失了！",
     bar_nextReturn = "返回",
 	
-	trigger_vanishFade = "Unknown's Ambush", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     msg_vanishFade = "雷纳塔基出现了！",
     bar_nextVanish = "消失",
 	
-	trigger_enrage = "Renataki gains Enrage.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_enrage = "激怒！",
 	
-	trigger_gouge = "Renataki's Gouge", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     bar_gouge = "凿击 CD",
 } end )
 local timer = {
@@ -100,11 +95,10 @@ local vanishTime = 0
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 		
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_enrage
+	self:RegisterCombatLog({"SPELL_DAMAGE", "SPELL_MISSED"}, "Ambush", "AmbushEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, "Gouge", "GougeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_vanishFade, trigger_gouge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_vanishFade, trigger_gouge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_vanishFade, trigger_gouge
 	
 	self:ThrottleSync(5, syncName.vanish)
 	self:ThrottleSync(5, syncName.vanishFade)
@@ -133,14 +127,21 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_vanishFade"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:AmbushEvent(ev)
+	if ev.sourceName == self.translatedName or ev.sourceName == "Unknown" or not ev.sourceName then
 		self:Sync(syncName.vanishFade)
-	
-	elseif msg == L["trigger_enrage"] then
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
-	
-	elseif string.find(msg, L["trigger_gouge"]) then
+	end
+end
+
+function module:GougeEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.gouge)
 	end
 end

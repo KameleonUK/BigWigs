@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Brood Queen Araxxna", "Karazhan")
 
 module.revision = 30037
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"volley", "leechingbite", "egg", "bosskill"}
 module.zonename = {
@@ -26,12 +27,8 @@ L:RegisterTranslations("enUS", function() return {
 	
 	
 	
-	trigger_volley = "Brood Queen Araxxna's Brood Venom Volley hits",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	bar_volley = "Brood Venom Volley",
 	
-	trigger_leechingBiteYou = "You are afflicted by Leeching Bite.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_leechingBiteOther = "(.+) is afflicted by Leeching Bite.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_leechingBiteFade = "Leeching Bite fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_leechingBite = " Leeching Bite",
 
 	trigger_eggSpawn = "My minions shall consume you!",--CHAT_MSG_MONSTER_YELL
@@ -61,12 +58,8 @@ L:RegisterTranslations("zhCN", function() return {
 	
 	
 	
-	trigger_volley = "Brood Queen Araxxna's Brood Venom Volley hits",--CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE
 	bar_volley = "巢毒齐射",
 	
-	trigger_leechingBiteYou = "You are afflicted by Leeching Bite.",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_leechingBiteOther = "(.+) is afflicted by Leeching Bite.",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
-	trigger_leechingBiteFade = "Leeching Bite fades from (.+).",--CHAT_MSG_SPELL_AURA_GONE_OTHER // CHAT_MSG_SPELL_AURA_GONE_PARTY // CHAT_MSG_SPELL_AURA_GONE_SELF
 	bar_leechingBite = " 水蛭叮咬",
 
 	trigger_eggSpawn = "My minions shall consume you!",--CHAT_MSG_MONSTER_YELL
@@ -101,17 +94,11 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_leechingBiteYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_leechingBiteOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_leechingBiteOther
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE"}, "Brood Venom Volley", "VolleyEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Leeching Bite", "LeechingBiteEvent")
+	self:RegisterCombatLog("SPELL_AURA_REMOVED", "Leeching Bite", "LeechingBiteFadeEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER", "Event")--trigger_leechingBiteFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY", "Event")--trigger_leechingBiteFade
-	self:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF", "Event")--trigger_leechingBiteFade
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_volley
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--trigger_volley
 	
 	self:RegisterEvent("CHAT_MSG_MONSTER_YELL")--trigger_eggSpawn
 	
@@ -142,22 +129,22 @@ function module:CHAT_MSG_MONSTER_YELL(msg, sender)
 	end
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_volley"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:VolleyEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.volley)
-	
-	elseif msg == L["trigger_leechingBiteYou"] then
-		self:Sync(syncName.leechingBite .. " " .. UnitName("Player"))
-	
-	elseif string.find(msg, L["trigger_leechingBiteOther"]) then
-		local _,_, leechingBiteTarget, _ = string.find(msg, L["trigger_leechingBiteOther"])
-		self:Sync(syncName.leechingBite .. " " .. leechingBiteTarget)
-		
-	elseif string.find(msg, L["trigger_leechingBiteFade"]) then
-		local _,_, leechingBiteFadeTarget, _ = string.find(msg, L["trigger_leechingBiteFade"])
-		if leechingBiteFadeTarget == "you" then leechingBiteFadeTarget = UnitName("Player") end
-		self:Sync(syncName.leechingBiteFade .. " " .. leechingBiteFadeTarget)
-		
+	end
+end
+
+function module:LeechingBiteEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.leechingBite .. " " .. ev.destName)
+	end
+end
+
+function module:LeechingBiteFadeEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.leechingBiteFade .. " " .. ev.destName)
 	end
 end
 
@@ -192,7 +179,7 @@ function module:LeechingBiteFade(rest)
 end
 
 function module:EggSpawn()
-	bwPlayerIsAttacking = nil
+	local bwPlayerIsAttacking = nil
 	if IsRaidLeader() or IsRaidOfficer() then
 		if BigWigs:PlayerClass() ~= "ROGUE" and BigWigs:PlayerClass() ~= "DRUID" then
 			if PlayerFrame.inCombat then

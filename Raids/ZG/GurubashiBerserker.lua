@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Gurubashi Berserker", "Zul'Gurub")
 
 module.revision = 30041
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"fear", "knock", "thunderclap"}
 module.trashMod = true
@@ -26,15 +27,10 @@ L:RegisterTranslations("enUS", function() return {
 	
 	
 	
-	trigger_fear1 = "afflicted by Intimidating Roar",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_fear2 = "Intimidating Roar fail(.+) immune.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_fear3 = "Intimidating Roar was resisted",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_fear = "Fear CD",
 	
-	trigger_knockAway = "Gurubashi Berserker's Knock Away",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_knockAway = "KnockAway CD",
 	
-	trigger_thunderclap = "Gurubashi Berserker's Thunderclap",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_thunderclap = "Thunderclap CD",
 } end )
 
@@ -58,15 +54,10 @@ L:RegisterTranslations("zhCN", function() return {
 	
 	
 	
-	trigger_fear1 = "afflicted by Intimidating Roar",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE // CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE
-	trigger_fear2 = "Intimidating Roar fail(.+) immune.",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
-	trigger_fear3 = "Intimidating Roar was resisted",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_fear = "恐惧 CD",
 	
-	trigger_knockAway = "Gurubashi Berserker's Knock Away",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_knockAway = "击退 CD",
 	
-	trigger_thunderclap = "Gurubashi Berserker's Thunderclap",--CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	bar_thunderclap = "雷霆一击 CD",
 } end )
 local timer = {
@@ -99,12 +90,9 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event")--Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event")--trigger_fear1
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event")--trigger_fear1
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event")--trigger_fear1
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event")--trigger_fear2, 3, trigger_knockAway, trigger_thunderclap
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event")--trigger_fear2, 3, trigger_knockAway, trigger_thunderclap
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event")--trigger_fear2, 3, trigger_knockAway, trigger_thunderclap
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_AURA_APPLIED", "SPELL_MISSED"}, "Intimidating Roar", "FearEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Knock Away", "KnockAwayEvent")
+	self:RegisterCombatLog({"SPELL_CAST_SUCCESS", "SPELL_DAMAGE", "SPELL_MISSED"}, "Thunderclap", "ThunderclapEvent")
 
 
 	self:ThrottleSync(2, syncName.fear)
@@ -131,12 +119,21 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_fear1"]) or string.find(msg, L["trigger_fear2"]) or string.find(msg, L["trigger_fear3"]) then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:FearEvent(ev)
+	if ev.sourceName == self.translatedName or (ev.subevent == "SPELL_AURA_APPLIED" and not ev.sourceName) then
 		self:Sync(syncName.fear)
-	elseif string.find(msg, L["trigger_knockAway"]) then
+	end
+end
+
+function module:KnockAwayEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.knockAway)
-	elseif string.find(msg, L["trigger_thunderclap"]) then
+	end
+end
+
+function module:ThunderclapEvent(ev)
+	if ev.sourceName == self.translatedName then
 		self:Sync(syncName.thunderclap)
 	end
 end

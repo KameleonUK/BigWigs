@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Lava Surger", "Molten Core")
 
 module.revision = 30073
+module.combatLog = true -- triggers from the combat log; the pack is done when none of this name is still fighting (UNIT_DIED)
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"surge"}
 module.trashMod = true
@@ -21,7 +22,6 @@ L:RegisterTranslations("enUS", function() return {
 	surge_desc = "Warn for Surge",
 	
 	
-	trigger_surge = "Lava Surger's Surge hits (.+) for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_surge = " failed to stack on the Surger",
 	msg_surgeYou = "S T A C K on the Surger",
 } end )
@@ -40,9 +40,7 @@ local syncName = {
 function module:OnEnable()
 	--self:RegisterEvent("CHAT_MSG_SAY", "Event") --Debug
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_surge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_surge
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_surge
+	self:RegisterCombatLog("SPELL_DAMAGE", {19196, "Surge"}, "SurgeEvent")
 	
 	self:ThrottleSync(3, syncName.surge)
 end
@@ -57,11 +55,10 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_surge"]) then
-		local _,_, surgePerson, _ = string.find(msg, L["trigger_surge"])
-		if surgePerson == "you" then surgePerson = UnitName("Player") end
-		self:Sync(syncName.surge.. " ".. surgePerson)
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:SurgeEvent(ev)
+	if ev.sourceName == self.translatedName and ev.destName then
+		self:Sync(syncName.surge .. " " .. ev.destName)
 	end
 end
 

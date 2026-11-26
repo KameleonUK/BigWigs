@@ -2,6 +2,7 @@
 local module, L = BigWigs:ModuleDeclaration("Kurinnaxx", "Ruins of Ahn'Qiraj")
 
 module.revision = 30069
+module.combatLog = true -- triggers come from the combat log; boss death from UNIT_DIED
 module.enabletrigger = module.translatedName
 module.toggleoptions = {"wound", "trap", "enrage", "bosskill"}
 
@@ -21,15 +22,11 @@ L:RegisterTranslations("enUS", function() return {
 	enrage_desc = "Warn for Enrage",
 	
 	
-	trigger_trap = "Sand Trap hits (.+) for", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
 	msg_sandTrap = "Sand Trap",
 	bar_trap = " Sand Trap",
 	
-	trigger_woundYou = "You are afflicted by Mortal Wound %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-	trigger_woundOther = "(.+) is afflicted by Mortal Wound %((.+)%).",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
 	bar_wound = " Wounds",
 
-	trigger_enrage = "Kurinnaxx gains Enrage.", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
 	msg_enrage = "Kurinnaxx is Enraged!",
 } end )
 
@@ -52,15 +49,11 @@ L:RegisterTranslations("zhCN", function() return {
     enrage_desc = "激怒出现时进行警告",
     
     
-    trigger_trap = "流沙陷阱的沙漠陷阱击中(.+)造成", --CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE // CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE
     msg_sandTrap = "沙尘陷阱",
     bar_trap = " 沙尘陷阱",
     
-    trigger_woundYou = "你受到了重伤效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE
-    trigger_woundOther = "(.+)受到了重伤效果的影响%（(.+)%）。",--CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE // CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE
     bar_wound = " 重伤",
 
-    trigger_enrage = "库林纳克斯获得了狂怒的效果。", --CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS
     msg_enrage = "库林纳克斯激怒了！",
     you = "你",
 } end )
@@ -84,15 +77,11 @@ local syncName = {
 }
 
 function module:OnEnable()
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "Event") --trigger_trap
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_PARTY_DAMAGE", "Event") --trigger_trap
-	self:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE", "Event") --trigger_trap
+	self:RegisterCombatLog("SPELL_AURA_APPLIED_DOSE", "Mortal Wound", "WoundEvent")
+	self:RegisterCombatLog("SPELL_DAMAGE", "Sand Trap", "TrapEvent")
+	self:RegisterCombatLog("SPELL_AURA_APPLIED", "Enrage", "EnrageEvent")
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "Event") --trigger_woundYou
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE", "Event") --trigger_woundOther
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE", "Event") --trigger_woundOther
 	
-	self:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS", "Event") --trigger_enrage
 	
 	
 	self:ThrottleSync(2, syncName.wound)
@@ -110,25 +99,21 @@ end
 function module:OnDisengage()
 end
 
-function module:Event(msg)
-	if string.find(msg, L["trigger_woundYou"]) then
-		local _,_,woundQty,_ = string.find(msg, L["trigger_woundYou"])
-		local woundPlayer = UnitName("Player")
-		local woundPlayerAndWoundQty = woundPlayer .. " " .. woundQty
-		self:Sync(syncName.wound.." "..woundPlayerAndWoundQty)
-		
-	elseif string.find(msg, L["trigger_woundOther"]) then
-		local _,_,woundPlayer,woundQty = string.find(msg, L["trigger_woundOther"])
-		local woundPlayerAndWoundQty = woundPlayer .. " " .. woundQty
-		self:Sync(syncName.wound.." "..woundPlayerAndWoundQty)
-	
-	
-	elseif string.find(msg, L["trigger_trap"]) then
-		local _,_,trapPlayer = string.find(msg, L["trigger_trap"])
-		if trapPlayer == "you" then trapPlayer = UnitName("Player") end
-		self:Sync(syncName.trap.." "..trapPlayer)
-	
-	elseif msg == L["trigger_enrage"] then
+-- combat log handlers; ev is described at RegisterCombatLog in Core.lua
+function module:WoundEvent(ev)
+	if ev.destName and ev.amount and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.wound .. " " .. ev.destName .. " " .. ev.amount)
+	end
+end
+
+function module:TrapEvent(ev)
+	if ev.destName and BigWigs:IsGroupMember(ev.destFlags) then
+		self:Sync(syncName.trap .. " " .. ev.destName)
+	end
+end
+
+function module:EnrageEvent(ev)
+	if ev.destName == self.translatedName then
 		self:Sync(syncName.enrage)
 	end
 end

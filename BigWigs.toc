@@ -19,4 +19,3 @@
 ## X-Embeds: Ace2, FuBarPlugin-2.0, Babble-2.2, CandyBar, CompostLib, DewdropLib, PaintChipsLib, TabletLib, SurfaceLib
 
 classicapi_required.lua
-\
